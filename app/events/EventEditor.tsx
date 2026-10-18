@@ -1,0 +1,13 @@
+'use client';
+import {useState} from 'react';
+import {useRouter} from 'next/navigation';
+type SavedEvent={id:string;version:number;title:string;note:string;slugs:string[];evidence_digest:string};
+export default function EventEditor({event}:{event?:SavedEvent}){
+  const router=useRouter();const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');
+  async function submit(e:React.FormEvent<HTMLFormElement>){
+    e.preventDefault();const data=new FormData(e.currentTarget);const action=String(data.get('operation')||'save');setBusy(true);setMessage('');
+    const payload=action==='save'?{...(event?{id:event.id,version:event.version}:{}),title:data.get('title'),note:data.get('note'),slugs:String(data.get('slugs')).split(/[,\s]+/).filter(Boolean)}:{id:event!.id,version:event!.version,status:data.get('status'),reason:data.get('reason'),evidence_digest:event!.evidence_digest};
+    try{const response=await fetch('/events/actions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,payload}),signal:AbortSignal.timeout(12000)});const result=await response.json();if(!response.ok){setMessage(result.error||'Could not save.');return;}setMessage(action==='save'?'Saved as draft. Review the current evidence before approving.':'Review decision saved and audited.');router.refresh();}catch{setMessage('Service unavailable. Retry after checking the connection.');}finally{setBusy(false);}
+  }
+  return <div><form className="collection-editor" onSubmit={submit}><input type="hidden" name="operation" value="save"/><h3>{event?'Edit investigation':'Start an investigation'}</h3><label>Your investigation label<input name="title" defaultValue={event?.title} required maxLength={160}/></label><label>Evidence story identifiers (1–12, separated by commas or spaces)<textarea name="slugs" defaultValue={event?.slugs.join(', ')} required maxLength={2172} rows={2}/></label><label>Your private analysis<textarea name="note" defaultValue={event?.note} maxLength={1000} rows={3}/></label><button disabled={busy}>{busy?'Saving…':'Save draft'}</button></form>{event&&<form className="collection-editor" onSubmit={submit}><input type="hidden" name="operation" value="review"/><h3>Record your review</h3><label>Decision<select name="status"><option value="reviewed">Mark evidence reviewed</option><option value="draft">Return to draft</option><option value="archived">Archive investigation</option></select></label><label>Review reason<textarea name="reason" required minLength={12} maxLength={500} rows={2}/></label><label><input type="checkbox" required/> I inspected the current evidence and its limitations.</label><button disabled={busy}>Save review decision</button></form>}<p role="status">{message}</p></div>;
+}

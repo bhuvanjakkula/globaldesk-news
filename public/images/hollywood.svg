@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" role="img" aria-label="Original illustrated hollywood cover"><defs></defs><defs>
+<linearGradient id="bg" x2="1" y2="1"><stop offset="0" stop-color="#532858"/><stop offset=".55" stop-color="#b85771"/><stop offset="1" stop-color="#e8ab88"/></linearGradient>
+<radialGradient id="halo"><stop offset="0" stop-color="#fff0bb" stop-opacity=".95"/><stop offset="1" stop-color="#fff0bb" stop-opacity="0"/></radialGradient>
+<linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff" stop-opacity=".45"/><stop offset="1" stop-color="#ffffff" stop-opacity=".025"/></linearGradient>
+<filter id="blur"><feGaussianBlur stdDeviation="34"/></filter>
+<pattern id="grain" width="72" height="72" patternUnits="userSpaceOnUse"><circle cx="14" cy="19" r="1.3" fill="white" opacity=".19"/><circle cx="63" cy="42" r=".8" fill="white" opacity=".2"/></pattern></defs><rect width="1200" height="740" fill="url(#bg)"/>
+    <circle cx="910" cy="180" r="380" fill="url(#halo)" opacity=".36"/>
+    <path d="M0 0L250 0L0 410Z" fill="url(#glass)" opacity=".25"/><ellipse cx="930" cy="188" rx="480" ry="310" fill="url(#halo)" opacity=".78"/>
+<path d="M0 555Q240 345 480 490Q760 290 1200 480V740H0Z" fill="#40235c" opacity=".8"/>
+<path d="M0 640Q220 490 470 588Q740 410 1200 565V740H0Z" fill="#201c45"/>
+<path d="M180 580L455 70L560 680" stroke="#f9d1b3" stroke-width="4" fill="none" opacity=".7"/>
+<path d="M890 650L735 110L680 690" stroke="#f9d1b3" stroke-width="5" fill="none" opacity=".68"/>
+<polygon points="615.0,70.0 657.3,191.8 786.2,194.4 683.5,272.2 720.8,395.6 615.0,322.0 509.2,395.6 546.5,272.2 443.8,194.4 572.7,191.8" fill="#f9cfb0" opacity="0.85"/><circle cx="615" cy="250" r="220" fill="none" stroke="#f7c0c9" stroke-width="8" opacity=".6"/><rect width="1200" height="740" fill="url(#grain)" opacity=".7"/></svg>

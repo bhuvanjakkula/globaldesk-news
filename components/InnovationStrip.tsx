@@ -1,0 +1,6 @@
+import Link from 'next/link';
+import {getRadar} from '@/lib/innovation';
+export default async function InnovationStrip(){
+  let radar;try{radar=await getRadar(new URLSearchParams({days:'90'}));}catch{return <div className="radar-promo"><div><span className="eyebrow">THE NEXT FRONTIER</span><h2>Innovation Radar</h2><p>Explore AI, quantum, chips, robotics, climate tech and more.</p></div><Link href="/innovation">Open Innovation Radar ↗</Link></div>;}
+  return <section className="radar-promo"><div className="radar-promo-heading"><span className="radar-live-dot"/><span className="eyebrow">INNOVATION RADAR / REAL SOURCE METADATA</span><Link href="/innovation">Explore all signals ↗</Link></div><h2>The ideas shaping what’s next.</h2><div className="radar-promo-grid">{radar.items.slice(0,3).map(s=><a href={s.url} key={s.id} target="_blank" rel="noopener noreferrer"><small>{s.kind==='research'?'RESEARCH RECORD':'OFFICIAL ANNOUNCEMENT'} · {s.published_at.slice(0,10)}</small><h3>{s.title}</h3><span>{s.publisher} ↗</span></a>)}</div>{!radar.items.length&&<p>Awaiting permitted source updates. <Link href="/innovation">Explore the Radar →</Link></p>}<p className="radar-promo-note">Title and link discovery. Research records are not independently verified news. <Link href="/innovation#coverage">View coverage & freshness</Link></p></section>;
+}
