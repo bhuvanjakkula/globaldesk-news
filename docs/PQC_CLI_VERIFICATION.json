@@ -1,0 +1,10 @@
+{
+  "kind": "Ephemeral-key CLI demonstration; not a production identity",
+  "keygen": true,
+  "public_snapshot_signed": true,
+  "both_signatures_verified": true,
+  "tampered_snapshot_rejected": true,
+  "private_keys_retained": false,
+  "receipt_expires_at": "2026-10-18T03:07:28.911329+00:00",
+  "key_id": "bff376ef16793f699b6197e5755455d9ebf750e8a489052066e0a3e4296f2913bfc610463a3e2180456d695fbfa16d4f"
+}

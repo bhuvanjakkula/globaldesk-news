@@ -1,0 +1,56 @@
+{
+  "checks": [
+    {
+      "route": "/health",
+      "status": 200
+    },
+    {
+      "route": "/",
+      "status": 200
+    },
+    {
+      "route": "/search",
+      "status": 200
+    },
+    {
+      "route": "/briefings",
+      "status": 200
+    },
+    {
+      "route": "/sources",
+      "status": 200
+    },
+    {
+      "route": "/intelligence",
+      "status": 200
+    },
+    {
+      "route": "/security",
+      "status": 200
+    },
+    {
+      "route": "/compare?slugs=demo-world-1,demo-business-2",
+      "status": 200
+    },
+    {
+      "route": "/research",
+      "status": 200
+    },
+    {
+      "route": "/editorial",
+      "status": 200
+    },
+    {
+      "route": "/research",
+      "authenticated": true,
+      "status": 200
+    },
+    {
+      "route": "/editorial",
+      "authenticated": true,
+      "status": 200
+    }
+  ],
+  "total": 12,
+  "temporary_session_removed": true
+}

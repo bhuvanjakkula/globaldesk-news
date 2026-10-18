@@ -1,0 +1,16 @@
+{
+  "owner_email": "bhuvanjakkula@gmail.com",
+  "free_access": true,
+  "password_required": false,
+  "unauthenticated_private_page_denied": true,
+  "untrusted_origin_rejected": true,
+  "sign_in_verified": true,
+  "session_cookie_http_only": true,
+  "session_cookie_same_site": "strict",
+  "session_token_absent_from_browser_response_body": true,
+  "link_replay_rejected": true,
+  "logout_verified": true,
+  "mailbox_verification": false,
+  "email_sent": false,
+  "payment_service_used": false
+}

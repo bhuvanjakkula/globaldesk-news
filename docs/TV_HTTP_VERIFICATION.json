@@ -1,0 +1,11 @@
+{
+  "checked_at": "2026-10-18T05:25:13.838642+00:00",
+  "checks": [
+    "TV page displays artificial-presenter and silent-export disclosures",
+    "markets bulletin preserves source identity, dates and speech gates",
+    "innovation bulletin preserves source identity, dates and speech gates",
+    "demo bulletin preserves source identity, dates and speech gates",
+    "invalid channel rejected"
+  ],
+  "scope": "HTTP checks; browser voice audibility and video download require browser validation."
+}

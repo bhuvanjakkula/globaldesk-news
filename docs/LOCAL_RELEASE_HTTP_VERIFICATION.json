@@ -1,0 +1,60 @@
+{
+  "checked_at": "2026-10-18T05:14:58.628788+00:00",
+  "checks": [
+    {
+      "path": "/",
+      "status": 200
+    },
+    {
+      "path": "/markets",
+      "status": 200
+    },
+    {
+      "path": "/innovation",
+      "status": 200
+    },
+    {
+      "path": "/news",
+      "status": 200
+    },
+    {
+      "path": "/account/access",
+      "status": 200
+    },
+    {
+      "path": "/sources",
+      "status": 200
+    },
+    {
+      "path": "/intelligence",
+      "status": 200
+    },
+    {
+      "path": "/security",
+      "status": 200
+    },
+    {
+      "path": "/api/updates",
+      "status": 200
+    },
+    {
+      "path": "/health",
+      "status": 200,
+      "total": null,
+      "refresh_status": null
+    },
+    {
+      "path": "/api/v1/markets/news?days=90",
+      "status": 200,
+      "total": 46,
+      "refresh_status": "completed"
+    },
+    {
+      "path": "/api/v1/innovation/signals?days=90",
+      "status": 200,
+      "total": 78,
+      "refresh_status": "completed"
+    }
+  ],
+  "scope": "HTTP response/content checks; no visual or accessibility sign-off."
+}

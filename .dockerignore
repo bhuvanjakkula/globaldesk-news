@@ -1,0 +1,16 @@
+**/node_modules
+**/.next
+**/.next-*
+**/.test-tmp*
+**/backups
+**/__pycache__
+**/.pytest_cache
+**/.venv
+**/*.db
+**/*.sqlite3
+.env
+.git
+
+**/.security-audit
+**/.secrets
+**/*.private.pem

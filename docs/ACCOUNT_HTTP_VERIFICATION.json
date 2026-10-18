@@ -1,0 +1,10 @@
+{
+  "checks": [
+    "signup creates HttpOnly SameSite cookie without exposing token",
+    "customer profile loads through website session",
+    "logout revokes access",
+    "existing customer signs back in",
+    "untrusted origin rejected"
+  ],
+  "fixture_removed": true
+}

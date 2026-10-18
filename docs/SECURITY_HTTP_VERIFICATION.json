@@ -1,0 +1,44 @@
+[
+  {
+    "route": "/security",
+    "frame_denied": true,
+    "all_scripts_nonce_bound": true,
+    "script_tags": 10,
+    "status": 200
+  },
+  {
+    "route": "/intelligence",
+    "frame_denied": true,
+    "all_scripts_nonce_bound": true,
+    "script_tags": 10,
+    "status": 200
+  },
+  {
+    "route": "/topics/politics",
+    "frame_denied": true,
+    "all_scripts_nonce_bound": true,
+    "script_tags": 10,
+    "status": 200
+  },
+  {
+    "route": "/search?category=technology",
+    "frame_denied": true,
+    "all_scripts_nonce_bound": true,
+    "script_tags": 10,
+    "status": 200
+  },
+  {
+    "route": "/briefings",
+    "frame_denied": true,
+    "all_scripts_nonce_bound": true,
+    "script_tags": 10,
+    "status": 200
+  },
+  {
+    "route": "/topics/entertainment",
+    "frame_denied": true,
+    "all_scripts_nonce_bound": true,
+    "script_tags": 10,
+    "status": 200
+  }
+]

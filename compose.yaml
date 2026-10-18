@@ -1,0 +1,102 @@
+name: global-news-mvp
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-globalnews}
+      POSTGRES_USER: ${POSTGRES_USER:-globalnews}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    ports:
+      - "127.0.0.1:5433:5432"
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  api:
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-globalnews}:${POSTGRES_PASSWORD:-change-me-local-only}@db:5432/${POSTGRES_DB:-globalnews}
+      REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-c", "alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers"]
+    ports:
+      - "127.0.0.1:8000:8000"
+  worker:
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-globalnews}:${POSTGRES_PASSWORD:-change-me-local-only}@db:5432/${POSTGRES_DB:-globalnews}
+      REDIS_URL: redis://redis:6379/0
+    command: ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=info", "--concurrency=1"]
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+  beat:
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-globalnews}:${POSTGRES_PASSWORD:-change-me-local-only}@db:5432/${POSTGRES_DB:-globalnews}
+      REDIS_URL: redis://redis:6379/0
+    command: ["celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+  frontend:
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      INTERNAL_API_URL: http://api:8000
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      OWNER_SITE_ORIGIN: ${OWNER_SITE_ORIGIN:-http://127.0.0.1:3000}
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "127.0.0.1:3000:3000"
+volumes:
+  postgres_data:

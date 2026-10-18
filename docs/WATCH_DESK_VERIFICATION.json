@@ -1,0 +1,16 @@
+{
+  "private_page_requires_owner": true,
+  "create": true,
+  "evidence_visible": true,
+  "review": true,
+  "edit": true,
+  "remove": true,
+  "cross_origin_rejected": true,
+  "arbitrary_proxy_action_rejected": true,
+  "backend_tests_passed": 59,
+  "production_build_passed": true,
+  "migration": "0004_watch_desk",
+  "browser_starters_saved": 3,
+  "browser_review_checkpoint_verified": true,
+  "sample_cap_605_record_test_passed": true
+}

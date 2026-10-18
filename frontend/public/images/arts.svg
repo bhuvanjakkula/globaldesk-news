@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" role="img" aria-label="Original illustrated arts cover"><defs></defs><defs>
+<linearGradient id="bg" x2="1" y2="1"><stop offset="0" stop-color="#2d1649"/><stop offset=".55" stop-color="#864d99"/><stop offset="1" stop-color="#d8698b"/></linearGradient>
+<radialGradient id="halo"><stop offset="0" stop-color="#edb7ff" stop-opacity=".95"/><stop offset="1" stop-color="#edb7ff" stop-opacity="0"/></radialGradient>
+<linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff" stop-opacity=".45"/><stop offset="1" stop-color="#ffffff" stop-opacity=".025"/></linearGradient>
+<filter id="blur"><feGaussianBlur stdDeviation="34"/></filter>
+<pattern id="grain" width="72" height="72" patternUnits="userSpaceOnUse"><circle cx="14" cy="19" r="1.3" fill="white" opacity=".19"/><circle cx="63" cy="42" r=".8" fill="white" opacity=".2"/></pattern></defs><rect width="1200" height="740" fill="url(#bg)"/>
+    <circle cx="910" cy="180" r="380" fill="url(#halo)" opacity=".36"/>
+    <path d="M0 0L250 0L0 410Z" fill="url(#glass)" opacity=".25"/><rect x="105" y="75" width="970" height="600" rx="18" fill="#fce5d1" opacity=".95" stroke="#803e70" stroke-width="27"/>
+<rect x="147" y="116" width="886" height="516" fill="#fac9a2"/>
+<path d="M145 605Q340 185 650 450T1028 160V635H145Z" fill="#ed4874"/>
+<circle cx="700" cy="265" r="165" fill="#ffda6d"/>
+<path d="M180 190Q420 95 445 225T720 350" fill="none" stroke="#673ca1" stroke-width="65" stroke-linecap="round"/>
+<path d="M225 588Q435 300 585 558T990 435" fill="none" stroke="#2fbeb8" stroke-width="72" stroke-linecap="round"/>
+<path d="M760 155L890 380L990 160" fill="none" stroke="#74409d" stroke-width="35"/>
+<circle cx="275" cy="282" r="20" fill="#ffedbd" opacity="0.65"/><circle cx="385" cy="470" r="28" fill="#ffedbd" opacity="0.65"/><circle cx="825" cy="523" r="27" fill="#ffedbd" opacity="0.65"/><rect width="1200" height="740" fill="url(#grain)" opacity=".7"/></svg>

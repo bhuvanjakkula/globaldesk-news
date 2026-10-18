@@ -1,0 +1,73 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    ".next-final/types/**/*.ts",
+    ".next-final/dev/types/**/*.ts",
+    ".next-clean-owner/types/**/*.ts",
+    ".next-clean-owner/dev/types/**/*.ts",
+    ".next-cover/types/**/*.ts",
+    ".next-cover/dev/types/**/*.ts",
+    ".next-cover-final/types/**/*.ts",
+    ".next-cover-final/dev/types/**/*.ts",
+    ".next-direct-news/types/**/*.ts",
+    ".next-direct-news/dev/types/**/*.ts",
+    ".next-radar/types/**/*.ts",
+    ".next-radar/dev/types/**/*.ts",
+    ".next-radar-final/types/**/*.ts",
+    ".next-radar-final/dev/types/**/*.ts",
+    ".next-markets/types/**/*.ts",
+    ".next-markets/dev/types/**/*.ts",
+    ".next-local-release/types/**/*.ts",
+    ".next-local-release/dev/types/**/*.ts",
+    ".next-events/types/**/*.ts",
+    ".next-events/dev/types/**/*.ts",
+    ".next-live/types/**/*.ts",
+    ".next-live/dev/types/**/*.ts",
+    ".next-tv/types/**/*.ts",
+    ".next-tv/dev/types/**/*.ts",
+    ".next-tv-grand/types/**/*.ts",
+    ".next-tv-grand/dev/types/**/*.ts",
+    ".next-avatar/types/**/*.ts",
+    ".next-avatar/dev/types/**/*.ts",
+    ".next-completion/types/**/*.ts",
+    ".next-completion/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next-release",
+    ".next-verified"
+  ]
+}

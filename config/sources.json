@@ -1,0 +1,112 @@
+{
+  "notice": "Registry examples ONLY. PENDING_REVIEW is not permission to scrape, republish, or run AI on publisher content. Source names are for future integrations. No feeds are connected by default.",
+  "sources": [
+    {
+      "name": "Global Desk Demo",
+      "domain": "example.org",
+      "region": "Global",
+      "source_type": "demo",
+      "access_method": "original_fixture",
+      "status": "demo",
+      "public_metadata_allowed": true,
+      "ai_processing_allowed": true,
+      "rights_basis": "Original fictional text authored for this starter project",
+      "notes": "Not a real news publisher; examples are prominently labeled DEMO."
+    },
+    {
+      "name": "Reuters",
+      "domain": "reuters.com",
+      "region": "Global"
+    },
+    {
+      "name": "Associated Press",
+      "domain": "apnews.com",
+      "region": "Global"
+    },
+    {
+      "name": "BBC News",
+      "domain": "bbc.com",
+      "region": "Europe"
+    },
+    {
+      "name": "CNN",
+      "domain": "cnn.com",
+      "region": "Americas"
+    },
+    {
+      "name": "Fox News",
+      "domain": "foxnews.com",
+      "region": "Americas"
+    },
+    {
+      "name": "The Wall Street Journal",
+      "domain": "wsj.com",
+      "region": "Americas"
+    },
+    {
+      "name": "Financial Times",
+      "domain": "ft.com",
+      "region": "Europe"
+    },
+    {
+      "name": "Bloomberg",
+      "domain": "bloomberg.com",
+      "region": "Americas"
+    },
+    {
+      "name": "Nikkei Asia",
+      "domain": "asia.nikkei.com",
+      "region": "Asia"
+    },
+    {
+      "name": "Al Jazeera",
+      "domain": "aljazeera.com",
+      "region": "Middle East"
+    },
+    {
+      "name": "The Guardian",
+      "domain": "theguardian.com",
+      "region": "Europe"
+    },
+    {
+      "name": "Variety",
+      "domain": "variety.com",
+      "region": "Americas"
+    },
+    {
+      "name": "The Hollywood Reporter",
+      "domain": "hollywoodreporter.com",
+      "region": "Americas"
+    },
+    {
+      "name": "Billboard",
+      "domain": "billboard.com",
+      "region": "Americas"
+    },
+    {
+      "name": "Rolling Stone",
+      "domain": "rollingstone.com",
+      "region": "Americas"
+    },
+    {
+      "name": "Deadline",
+      "domain": "deadline.com",
+      "region": "Americas"
+    },
+    {
+      "name": "IndieWire",
+      "domain": "indiewire.com",
+      "region": "Americas"
+    },
+    {
+      "name": "ARTnews",
+      "domain": "artnews.com",
+      "region": "Americas"
+    },
+    {
+      "name": "Pitchfork",
+      "domain": "pitchfork.com",
+      "region": "Americas"
+    }
+  ]
+}

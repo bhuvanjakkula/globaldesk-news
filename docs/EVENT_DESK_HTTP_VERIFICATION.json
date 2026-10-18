@@ -1,0 +1,14 @@
+{
+  "checked_at": "2026-10-18T05:10:18.053353+00:00",
+  "checks": [
+    "unauthenticated API and website actions rejected",
+    "website action creates private event",
+    "authenticated page renders dossier, timeline and connections",
+    "website action records human review",
+    "stale review rejected across website proxy",
+    "untrusted browser origin rejected",
+    "Intelligence Lab exposes tracking workflow"
+  ],
+  "qa_dossier_and_session_removed": true,
+  "scope": "HTTP integration checks; visual acceptance not established."
+}

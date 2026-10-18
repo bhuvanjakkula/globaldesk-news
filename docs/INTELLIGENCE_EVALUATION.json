@@ -1,0 +1,27 @@
+{
+  "fixture_kind": "Synthetic engineering smoke evaluation, not a real-news accuracy benchmark",
+  "labeled_headlines": 8,
+  "expected_pairs": 3,
+  "predicted_pairs": 3,
+  "true_positive_pairs": 3,
+  "false_positive_pairs": 0,
+  "false_negative_pairs": 0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "fragmentation_benchmark": {
+    "headlines": 300,
+    "groups": 300,
+    "milliseconds_five_runs": [
+      65.1,
+      61.37,
+      73.33,
+      69.81,
+      88.83
+    ]
+  },
+  "limitations": [
+    "Tiny hand-written English dataset; not evidence of field accuracy.",
+    "No multilingual, paraphrase, named-entity ambiguity or live traffic validation.",
+    "Timings are local engine-only runs; exclude database, HTTP and production contention."
+  ]
+}

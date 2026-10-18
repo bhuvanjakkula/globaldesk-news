@@ -1,0 +1,25 @@
+.env
+*.py[cod]
+__pycache__/
+.pytest_cache/
+*.db
+!backend/local.db
+*.sqlite3
+.venv/
+node_modules/
+.next/
+.next-*/
+backups/
+logs/
+*.log
+.test-tmp*/
+*.tsbuildinfo
+.DS_Store
+coverage/
+
+# Signing keys must never be committed or packaged.
+.secrets/
+*.private.pem
+
+.security-audit/
+generated-media/

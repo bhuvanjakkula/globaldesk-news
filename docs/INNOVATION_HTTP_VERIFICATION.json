@@ -1,0 +1,13 @@
+{
+  "checks": {
+    "/": 200,
+    "/innovation": 200,
+    "/innovation?topic=quantum": 200,
+    "/innovation?kind=official_update&days=90": 200,
+    "/innovation?q=unmatchablefixtureterm": 200,
+    "/account/access": 200
+  },
+  "signals_90_days": 67,
+  "publisher_labels": 26,
+  "refresh_status": "completed"
+}
