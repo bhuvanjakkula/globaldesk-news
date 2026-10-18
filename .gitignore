@@ -3,7 +3,6 @@
 __pycache__/
 .pytest_cache/
 *.db
-!backend/local.db
 *.sqlite3
 .venv/
 node_modules/
