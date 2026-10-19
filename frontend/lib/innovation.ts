@@ -45,15 +45,17 @@ const INNOVATION_TOPICS: { slug: string; name: string; terms: string[] }[] = [
 ];
 
 export async function getRadar(params: URLSearchParams = new URLSearchParams()): Promise<Radar> {
-  const baseUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
-  try {
-    const r = await fetch(`${baseUrl}/api/v1/innovation/signals?${params}`, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(800),
-    });
-    if (r.ok) return await r.json();
-  } catch {
-    // Proceed to high-engineering live innovation radar fallback
+  const isVercel = process.env.VERCEL === '1' || !!process.env.NEXT_PUBLIC_VERCEL_ENV;
+  if (!isVercel && process.env.INTERNAL_API_URL) {
+    try {
+      const r = await fetch(`${process.env.INTERNAL_API_URL}/api/v1/innovation/signals?${params}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(600),
+      });
+      if (r.ok) return await r.json();
+    } catch {
+      // Proceed to high-engineering live innovation radar fallback
+    }
   }
 
   // Synthesize live innovation signals from prominent technology & science feeds

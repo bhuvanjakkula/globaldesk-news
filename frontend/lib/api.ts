@@ -304,13 +304,17 @@ export async function synthesizeLiveIntelligence(options: { hours: number; categ
 }
 
 export async function getIntelligence(options: { hours: number; category: string; min_sources: number }): Promise<IntelligenceReport> {
-  const query = new URLSearchParams({ hours: String(options.hours), min_sources: String(options.min_sources) });
-  if (options.category) query.set('category', options.category);
-  try {
-    return await apiFetch(`/api/v1/intelligence/events?${query}`);
-  } catch {
-    return await synthesizeLiveIntelligence(options);
+  const isVercel = process.env.VERCEL === '1' || !!process.env.NEXT_PUBLIC_VERCEL_ENV;
+  if (!isVercel && process.env.INTERNAL_API_URL) {
+    const query = new URLSearchParams({ hours: String(options.hours), min_sources: String(options.min_sources) });
+    if (options.category) query.set('category', options.category);
+    try {
+      return await apiFetch(`/api/v1/intelligence/events?${query}`);
+    } catch {
+      // Fall through to live intelligence clustering
+    }
   }
+  return await synthesizeLiveIntelligence(options);
 }
 export interface CyberShieldTelemetry {
   total_threats_neutralized: number;

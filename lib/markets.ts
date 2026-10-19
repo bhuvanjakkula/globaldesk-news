@@ -40,15 +40,17 @@ export const EXCHANGES = [
 ];
 
 export async function getMarketNews(params = new URLSearchParams()): Promise<MarketNews> {
-  const baseUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
-  try {
-    const r = await fetch(`${baseUrl}/api/v1/markets/news?${params}`, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(800),
-    });
-    if (r.ok) return await r.json();
-  } catch {
-    // Proceed to high-engineering live syndication fallback
+  const isVercel = process.env.VERCEL === '1' || !!process.env.NEXT_PUBLIC_VERCEL_ENV;
+  if (!isVercel && process.env.INTERNAL_API_URL) {
+    try {
+      const r = await fetch(`${process.env.INTERNAL_API_URL}/api/v1/markets/news?${params}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(600),
+      });
+      if (r.ok) return await r.json();
+    } catch {
+      // Proceed to high-engineering live syndication fallback
+    }
   }
 
   // Synthesize live market data from prominent financial wires

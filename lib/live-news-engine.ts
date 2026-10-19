@@ -548,11 +548,13 @@ interface CacheState {
   revision: string;
 }
 
+const initialArticles: NewsArticle[] = (seedBundle?.news?.items as NewsArticle[]) || [];
+
 const globalCache: CacheState = {
-  articles: [],
-  lastFetchedAt: 0,
+  articles: initialArticles,
+  lastFetchedAt: Date.now() - 30000,
   isFetching: false,
-  revision: 'init-0',
+  revision: `rev-prewarmed-${initialArticles.length}`,
 };
 
 // Asynchronous multi-feed parallel fetcher
@@ -565,7 +567,7 @@ async function fetchAllProminentFeeds(): Promise<NewsArticle[]> {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 GlobalDeskNews/2.5',
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
         },
-        signal: AbortSignal.timeout(4500),
+        signal: AbortSignal.timeout(2500),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const xml = await res.text();
@@ -713,23 +715,12 @@ export async function getLiveArticles(options: {
   const now = Date.now();
   const cacheAge = now - globalCache.lastFetchedAt;
 
-  // Cold start: synchronous fetch
-  if (globalCache.articles.length === 0 || cacheAge > 180000) {
-    try {
-      const fresh = await fetchAllProminentFeeds();
-      if (fresh.length > 0) {
-        globalCache.articles = fresh;
-        globalCache.lastFetchedAt = now;
-        globalCache.revision = `rev-${now}-${fresh.length}`;
-      }
-    } catch {
-      // Fallback to seed items
-      globalCache.articles = (seedBundle?.news?.items as NewsArticle[]) || [];
-      globalCache.lastFetchedAt = now;
-      globalCache.revision = `fallback-${now}`;
-    }
-  } else if (cacheAge > 40000) {
-    // SWR trigger: cache is older than 40 seconds, trigger async background refresh
+  // Instant High-Tech Execution: Never block Vercel edge/serverless functions.
+  if (globalCache.articles.length === 0) {
+    globalCache.articles = (seedBundle?.news?.items as NewsArticle[]) || [];
+    triggerBackgroundRevalidation();
+  } else if (cacheAge > 30000) {
+    // SWR trigger: refresh in background if cache is older than 30 seconds
     triggerBackgroundRevalidation();
   }
 

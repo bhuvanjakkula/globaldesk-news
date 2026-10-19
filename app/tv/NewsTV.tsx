@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import Studio from './Studio';
 import RealPresenter from './RealPresenter';
+import seedBundle from '@/lib/seed_news.json';
 
 type Item = {
   id: string;
@@ -68,16 +69,60 @@ const CHANNELS: NewsChannel[] = [
   },
 ];
 
+function getInitialBulletinItems(): Item[] {
+  const seedItems = (seedBundle?.news?.items || []).slice(0, 16);
+  const bureaus = [
+    'GLOBALDESK / LONDON BUREAU',
+    'WALL STREET / NEW YORK DESK',
+    'GLOBALDESK / GENEVA HUB',
+    'PARIS / EUROPEAN DESK',
+    'WASHINGTON / CAPITOL HUB',
+    'TOKYO / ASIA PACIFIC DESK',
+  ];
+  return seedItems.map((art: any, idx: number) => {
+    const cleanTitle = (art.title || '')
+      .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA).*$/i, '')
+      .replace(/\.$/, '')
+      .trim();
+    let conciseSummary = (art.summary || '').trim();
+    const firstSentenceMatch = conciseSummary.match(/^([^.!?]+[.!?])/);
+    if (firstSentenceMatch && firstSentenceMatch[1].length > 25) {
+      conciseSummary = firstSentenceMatch[1].trim();
+    } else if (conciseSummary.length > 130) {
+      conciseSummary = conciseSummary.slice(0, 127).trim() + '...';
+    }
+    const spokenText = conciseSummary && !cleanTitle.toLowerCase().includes(conciseSummary.toLowerCase().slice(0, 25))
+      ? `${cleanTitle}. ${conciseSummary}`
+      : `${cleanTitle}.`;
+
+    return {
+      id: `initial-bulletin-${idx + 1}-${art.slug || idx}`,
+      title: cleanTitle,
+      summary: conciseSummary || null,
+      full_report: art.summary || cleanTitle,
+      lead_intro: 'Reporting live this hour',
+      bureau: bureaus[idx % bureaus.length],
+      bullet_points: [cleanTitle, conciseSummary || 'Verified multi-source dispatch.'],
+      source: art.source?.name || 'GlobalDesk News Wire',
+      url: art.url || `/story/${art.slug}`,
+      published_at: art.published_at || new Date().toISOString(),
+      is_demo: false,
+      narration_allowed: true,
+      spoken_text: spokenText,
+    };
+  });
+}
+
 export default function NewsTV() {
   const [selectedChannel, setSelectedChannel] = useState<NewsChannel>(CHANNELS[0]);
-  const [items, setItems] = useState<Item[]>([]);
+  const [items, setItems] = useState<Item[]>(() => getInitialBulletinItems());
   const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(true);
   const [speaking, setSpeaking] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voice, setVoice] = useState('');
-  const [message, setMessage] = useState('Open Broadcast Studio Initialized · No Account or Sign-in Required');
+  const [message, setMessage] = useState('● Live Studio Broadcast Active · GlobalDesk Free Worldwide Access');
   const [recording, setRecording] = useState(false);
   const [canRecord, setCanRecord] = useState(false);
   const [realReady, setRealReady] = useState(true);
@@ -90,7 +135,7 @@ export default function NewsTV() {
 
   const current = items[index];
 
-  // Initialize Speech Synthesis Voices
+  // Initialize Speech Synthesis Voices & Browser Audio Unlock
   useEffect(() => {
     setCanRecord(typeof MediaRecorder !== 'undefined' && typeof HTMLCanvasElement.prototype.captureStream === 'function');
     if (!('speechSynthesis' in window)) return;
@@ -100,9 +145,20 @@ export default function NewsTV() {
     };
     load();
     window.speechSynthesis.addEventListener('voiceschanged', load);
+
+    const unlockAudio = () => {
+      if ('speechSynthesis' in window && window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+    };
+    window.addEventListener('click', unlockAudio, { passive: true });
+    window.addEventListener('keydown', unlockAudio, { passive: true });
+
     return () => {
       window.speechSynthesis.removeEventListener('voiceschanged', load);
       window.speechSynthesis.cancel();
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
       if (recorder.current?.state === 'recording') recorder.current.stop();
     };
   }, []);
@@ -126,9 +182,10 @@ export default function NewsTV() {
           setItems(data.items);
           setIndex((i) => (data.items.length ? i % data.items.length : 0));
           setMessage('Broadcasting Verified Live Headlines · Free Public Access Worldwide');
+          setPlaying(true);
         }
       } catch {
-        if (active) {
+        if (active && items.length === 0) {
           setMessage('Reconnecting to live satellite stream…');
         }
       }
