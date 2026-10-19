@@ -394,6 +394,7 @@ async function fetchAllProminentFeeds(): Promise<NewsArticle[]> {
   const results = await Promise.allSettled(
     PROMINENT_FEEDS.map(async (cfg) => {
       const res = await fetch(cfg.url, {
+        cache: 'no-store',
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 GlobalDeskNews/2.5',
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
@@ -572,15 +573,21 @@ export function getLiveRevision(): {
   article_count: number;
   latest_headline: string;
   browser_poll_seconds: number;
+  feed_refresh_seconds: number;
 } {
+  if (globalCache.articles.length === 0 && seedBundle?.news?.items) {
+    globalCache.articles = seedBundle.news.items as NewsArticle[];
+    triggerBackgroundRevalidation();
+  }
   const latest = globalCache.articles[0];
-  const minuteStamp = Math.floor(Date.now() / 30000); // changes every 30 seconds
+  const minuteStamp = Math.floor(Date.now() / 15000); // changes every 15 seconds
   return {
     revision: `${globalCache.revision}-${minuteStamp}`,
     timestamp: new Date().toISOString(),
     article_count: globalCache.articles.length,
     latest_headline: latest ? latest.title : 'GlobalDesk Live Syndication Active',
     browser_poll_seconds: 5,
+    feed_refresh_seconds: 15,
   };
 }
 

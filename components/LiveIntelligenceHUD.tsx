@@ -75,6 +75,23 @@ export default function LiveIntelligenceHUD({ initialArticles, totalCount }: Liv
     };
   }, []);
 
+  // Sync state when server components pass fresh props on router.refresh()
+  useEffect(() => {
+    if (initialArticles && initialArticles.length > 0) {
+      setArticles(initialArticles);
+      setLiveTotal(totalCount);
+    }
+  }, [initialArticles, totalCount]);
+
+  // React immediately to global real-time news update events
+  useEffect(() => {
+    const handleNewsUpdate = () => void fetchLatest();
+    window.addEventListener('globaldesk:news-updated', handleNewsUpdate);
+    return () => {
+      window.removeEventListener('globaldesk:news-updated', handleNewsUpdate);
+    };
+  }, []);
+
   // Extract unique sources
   const sources = useMemo(() => {
     const map = new Map<string, string>();

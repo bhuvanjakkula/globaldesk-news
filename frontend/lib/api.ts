@@ -49,7 +49,9 @@ export const ENTERTAINMENT_TOPICS = TOPICS.filter(t => ['movies','films','hollyw
 import seedBundle from './seed_news.json';
 import { getLiveArticles, getLiveArticleBySlug } from './live-news-engine';
 
-const baseUrl = process.env.INTERNAL_API_URL || 'http://localhost:8000';
+const isVercel = process.env.VERCEL === '1' || !!process.env.NEXT_PUBLIC_VERCEL_ENV;
+const internalUrl = process.env.INTERNAL_API_URL;
+const baseUrl = internalUrl || (!isVercel ? 'http://127.0.0.1:8000' : null);
 
 export function sanitizeArticleText(text: string | null | undefined): string {
   if (!text) return '';
@@ -71,7 +73,8 @@ export function sanitizeArticle(a: NewsArticle): NewsArticle {
 }
 
 async function apiFetch<T>(path: string): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(1500) });
+  if (!baseUrl) throw new Error('No internal API URL configured');
+  const response = await fetch(`${baseUrl}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(600) });
   if (!response.ok) throw new Error(`API returned ${response.status}`);
   return response.json() as Promise<T>;
 }

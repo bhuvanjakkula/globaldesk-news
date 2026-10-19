@@ -4,23 +4,25 @@ import { getLiveRevision } from '@/lib/live-news-engine';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  if (process.env.INTERNAL_API_URL) {
+  const isVercel = process.env.VERCEL === '1' || !!process.env.NEXT_PUBLIC_VERCEL_ENV;
+  const internalUrl = process.env.INTERNAL_API_URL;
+
+  if (internalUrl && !isVercel) {
     try {
-      const response = await fetch(`${process.env.INTERNAL_API_URL}/api/v1/updates`, {
+      const response = await fetch(`${internalUrl}/api/v1/updates`, {
         cache: 'no-store',
-        signal: AbortSignal.timeout(1000),
+        signal: AbortSignal.timeout(600),
       });
       if (response.ok) {
-        return NextResponse.json(await response.json(), {
-          headers: { 'Cache-Control': 'no-store' },
-        });
+        const data = await response.json();
+        return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } });
       }
     } catch {
       // Fall through to real-time revision generator
     }
   }
 
-  // Real-time live syndication revision ticker
+  // Real-time live syndication revision ticker with zero latency
   const revisionData = getLiveRevision();
   return NextResponse.json(revisionData, {
     headers: {
