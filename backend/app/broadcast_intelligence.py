@@ -306,9 +306,8 @@ def compose_broadcast_script(
     cat_leads = lead_ins.get(category_slug, lead_ins["world"])
     lead_intro = cat_leads[index % len(cat_leads)]
 
-    # Spoken Anchor Narration: FULL AND CONCISE
-    # Focus 100% on the news facts. Do NOT clutter spoken script with repetitive "Forbes reported" or "as reported by Forbes".
-    full_script = f"{lead_intro}: {clean_title}. {body_text}"
+    # Spoken Anchor Narration: Direct, short, and precise without wasteful prefix filler
+    full_script = f"{clean_title}. {body_text}"
 
     # Visual bullet points for on-screen HUD (2 concise, structured takeaways)
     bullet_sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', body_text) if len(s.strip()) > 10]

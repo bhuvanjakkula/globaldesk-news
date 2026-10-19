@@ -167,18 +167,42 @@ export default function RealPresenter({
     if (voiceOn && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
 
-      // Synthesize prime-time news presentation - strictly eliminate robotic "X reports:"
-      let rawText = spokenScript;
+      // Clean headline: eliminate publisher suffixes
+      const cleanTitle = title
+        .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA).*$/i, '')
+        .replace(/\.$/, '')
+        .trim();
+
+      // Extract raw script and strip any legacy prefix phrases
+      let rawText = (spokenScript || '')
+        .replace(/^(In major (international )?headlines unfolding this hour:?\s*)/i, '')
+        .replace(/^(Leading international headlines unfolding right now:?\s*)/i, '')
+        .replace(/^(In breaking developments confirmed this hour:?\s*)/i, '')
+        .replace(/^(Financial markets and global wires report:?\s*)/i, '')
+        .replace(/^(Significant developments verified by our international desk:?\s*)/i, '')
+        .replace(/^(Direct from the global syndication feed:?\s*)/i, '')
+        .replace(/^(Major technological and economic shifts reported today:?\s*)/i, '')
+        .replace(/^(Fictional demonstration\.?\s*)/i, '')
+        .replace(/Transmitted live via verified international wire\.?/gi, '')
+        .replace(/Verified live international dispatch transmitted via [^.]+\.?/gi, '')
+        .replace(/Verified correspondents and monitoring bureaus are tracking [^.]+\.?/gi, '')
+        .replace(/Diplomatic delegations and regional observers are actively monitoring [^.]+\.?/gi, '')
+        .trim();
+
       if (!rawText) {
-        const cleanTitle = title.trim().replace(/\.$/, '');
-        const reportBody = (fullReport || summary || '').trim();
-        const intro = leadIntro || 'In major headlines unfolding this hour';
-        rawText = reportBody
-          ? `${intro}: ${cleanTitle}. ${reportBody}`
-          : `${intro}: ${cleanTitle}.`;
+        let reportBody = (fullReport || summary || '').trim();
+        const firstSentenceMatch = reportBody.match(/^([^.!?]+[.!?])/);
+        if (firstSentenceMatch && firstSentenceMatch[1].length > 20) {
+          reportBody = firstSentenceMatch[1].trim();
+        } else if (reportBody.length > 130) {
+          reportBody = reportBody.slice(0, 127).trim() + '...';
+        }
+        rawText = reportBody && !cleanTitle.toLowerCase().includes(reportBody.toLowerCase().slice(0, 25))
+          ? `${cleanTitle}. ${reportBody}`
+          : `${cleanTitle}.`;
       }
 
-      // Clean text for crystal-clear natural broadcast speech articulation
+      // Clean punctuation for clear broadcast speech articulation
       const spokenText = rawText
         .replace(/['’‘]/g, '')
         .replace(/["“”]/g, '')
@@ -190,7 +214,7 @@ export default function RealPresenter({
       utteranceRef.current = utterance;
       const voices = window.speechSynthesis.getVoices();
 
-      // Find suitable voice matching anchor gender if possible
+      // Match voice
       let matchedVoice = voices.find((v) => v.voiceURI === selectedVoice);
       if (!matchedVoice) {
         if (activeAnchor.voiceGender === 'female') {
@@ -204,8 +228,8 @@ export default function RealPresenter({
       }
 
       if (matchedVoice) utterance.voice = matchedVoice;
-      utterance.rate = 0.96; // Articulate, measured professional broadcast anchor cadence
-      utterance.pitch = activeAnchor.voiceGender === 'female' ? 1.04 : 0.96;
+      utterance.rate = 1.02; // Brisk, crisp, authoritative prime-time tempo
+      utterance.pitch = activeAnchor.voiceGender === 'female' ? 1.02 : 0.98;
 
       utterance.onstart = () => {
         if (active) setIsSpeaking(true);
@@ -214,22 +238,32 @@ export default function RealPresenter({
         if (active) {
           setIsSpeaking(false);
           utteranceRef.current = null;
-          timer = setTimeout(onEnded, 1600);
+          timer = setTimeout(onEnded, 700);
         }
       };
       utterance.onerror = () => {
         if (active) {
           setIsSpeaking(false);
           utteranceRef.current = null;
-          timer = setTimeout(onEnded, 7000);
+          timer = setTimeout(onEnded, 5000);
         }
       };
 
+      // Safety timeout: transition after 20s if browser speech hangs
+      const safetyTimer = setTimeout(() => {
+        if (active && utteranceRef.current) {
+          window.speechSynthesis.cancel();
+          setIsSpeaking(false);
+          utteranceRef.current = null;
+          onEnded();
+        }
+      }, 20000);
+
       window.speechSynthesis.speak(utterance);
     } else {
-      // Captions mode (extended dwell time for viewer to read full report)
+      // Captions mode (concise 8s dwell time)
       setIsSpeaking(false);
-      timer = setTimeout(onEnded, 14000);
+      timer = setTimeout(onEnded, 8000);
     }
 
     return () => {

@@ -629,20 +629,30 @@ export async function getLiveBroadcastBulletin(channel = 'live'): Promise<{
     'TOKYO / ASIA PACIFIC DESK',
   ];
 
-  const intros = [
-    'In breaking developments confirmed this hour',
-    'Leading international headlines unfolding right now',
-    'Financial markets and global wires report',
-    'Significant developments verified by our international desk',
-    'Direct from the global syndication feed',
-    'Major technological and economic shifts reported today',
-  ];
-
   const items = articles.map((art, idx) => {
     const bureau = bureaus[idx % bureaus.length];
-    const leadIntro = intros[idx % intros.length];
-    const cleanTitle = art.title.replace(/\.$/, '');
-    const cleanSummary = art.summary || `${cleanTitle}. Transmitted live via verified international wire.`;
+    
+    // Clean headline: remove publisher trailing tags like "- Reuters", "| BBC News"
+    const cleanTitle = art.title
+      .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA).*$/i, '')
+      .replace(/\.$/, '')
+      .trim();
+
+    // Clean summary: extract the single most impactful core factual sentence
+    let conciseSummary = (art.summary || '')
+      .replace(/Transmitted live via verified international wire\.?/gi, '')
+      .replace(/Verified live international dispatch transmitted via [^.]+\.?/gi, '')
+      .replace(/Verified correspondents and monitoring bureaus are tracking [^.]+\.?/gi, '')
+      .replace(/Diplomatic delegations and regional observers are actively monitoring [^.]+\.?/gi, '')
+      .replace(/Key developments focus on [^.]+\.?/gi, '')
+      .trim();
+
+    const firstSentenceMatch = conciseSummary.match(/^([^.!?]+[.!?])/);
+    if (firstSentenceMatch && firstSentenceMatch[1].length > 25) {
+      conciseSummary = firstSentenceMatch[1].trim();
+    } else if (conciseSummary.length > 130) {
+      conciseSummary = conciseSummary.slice(0, 127).trim() + '...';
+    }
 
     const bulletPoints = [
       `Primary Reporting: Verified via ${art.source?.name || 'International Wire'}.`,
@@ -650,14 +660,17 @@ export async function getLiveBroadcastBulletin(channel = 'live'): Promise<{
       `Transmission Status: Cross-referenced with high-engineering live satellite feed.`,
     ];
 
-    const spokenText = `${leadIntro}: ${cleanTitle}. ${cleanSummary}`;
+    // Direct, punchy broadcast script: Headline first, followed immediately by the key development
+    const spokenText = conciseSummary && !cleanTitle.toLowerCase().includes(conciseSummary.toLowerCase().slice(0, 30))
+      ? `${cleanTitle}. ${conciseSummary}`
+      : `${cleanTitle}.`;
 
     return {
       id: art.slug,
-      title: art.title,
-      summary: art.summary,
-      full_report: cleanSummary,
-      lead_intro: leadIntro,
+      title: cleanTitle,
+      summary: conciseSummary || cleanTitle,
+      full_report: conciseSummary || cleanTitle,
+      lead_intro: 'DIRECT WIRE',
       bureau,
       bullet_points: bulletPoints,
       source: art.source?.name || 'Global News Wire',
