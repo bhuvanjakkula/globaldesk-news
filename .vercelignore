@@ -1,0 +1,11 @@
+frontend
+backend
+node_modules
+.next
+.git
+.venv
+logs
+backups
+.secrets
+.security-audit
+generated-media

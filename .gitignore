@@ -22,3 +22,5 @@ coverage/
 
 .security-audit/
 generated-media/
+.vercel
+.env*
