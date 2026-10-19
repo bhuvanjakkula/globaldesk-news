@@ -157,7 +157,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'http://rss.cnn.com/rss/edition.rss',
     categorySlug: 'politics',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
+    defaultImage: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'CNBC Markets',
@@ -202,7 +202,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://moxie.foxnews.com/google-publisher/world.xml',
     categorySlug: 'world',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
+    defaultImage: 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Fox News Latest',
@@ -262,10 +262,10 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Politico Politics',
     domain: 'politico.com',
     region: 'Americas / Governance & Policy',
-    url: 'https://news.google.com/rss/search?q=source:Politico&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://rss.politico.com/politics-news.xml',
     categorySlug: 'politics',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
+    defaultImage: 'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Sky News World',
@@ -283,7 +283,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://www.aljazeera.com/xml/rss/all.xml',
     categorySlug: 'world',
     country: 'Global',
-    defaultImage: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
+    defaultImage: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'The Guardian World',
@@ -414,25 +414,54 @@ function decodeEntities(str: string): string {
     .trim();
 }
 
-// Helper: Extract image URL from XML item
+// Helper: Extract authentic image URL from XML item
 function extractImageUrl(itemXml: string, defaultImage: string): string {
   // 1. Check media:content or media:thumbnail
-  const mediaMatch = itemXml.match(/<media:(?:content|thumbnail)[^>]*url=["']([^"']+)["']/i);
-  if (mediaMatch && mediaMatch[1] && /^https?:\/\//i.test(mediaMatch[1])) {
-    return mediaMatch[1];
+  const mediaMatches = itemXml.matchAll(/<media:(?:content|thumbnail)[^>]*url=["']([^"']+)["']/gi);
+  for (const m of mediaMatches) {
+    let url = m[1].replace(/&amp;/g, '&').trim();
+    if (/^https?:\/\//i.test(url) && !url.includes('1541872703-74c5e44368f9') && !url.includes('1x1')) {
+      return url;
+    }
   }
+
   // 2. Check enclosure
   const encMatch = itemXml.match(/<enclosure[^>]*url=["']([^"']+)["'][^>]*type=["']image\/[^"']+["']/i) ||
                    itemXml.match(/<enclosure[^>]*type=["']image\/[^"']+["'][^>]*url=["']([^"']+)["']/i) ||
                    itemXml.match(/<enclosure[^>]*url=["']([^"']+)["']/i);
-  if (encMatch && encMatch[1] && /^https?:\/\//i.test(encMatch[1])) {
-    return encMatch[1];
+  if (encMatch && encMatch[1]) {
+    let url = encMatch[1].replace(/&amp;/g, '&').trim();
+    if (/^https?:\/\//i.test(url) && !url.includes('1541872703-74c5e44368f9') && !url.includes('1x1')) {
+      return url;
+    }
   }
-  // 3. Check <img> tag inside description or content
-  const imgMatch = itemXml.match(/<img[^>]*src=["']([^"']+)["']/i);
-  if (imgMatch && imgMatch[1] && /^https?:\/\//i.test(imgMatch[1])) {
-    return imgMatch[1];
+
+  // 3. Check <img> tag inside description or content (both direct and HTML-escaped)
+  const imgDirect = itemXml.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (imgDirect && imgDirect[1]) {
+    let url = imgDirect[1].replace(/&amp;/g, '&').trim();
+    if (/^https?:\/\//i.test(url) && !url.includes('1541872703-74c5e44368f9') && !url.includes('1x1') && !url.includes('spacer')) {
+      return url;
+    }
   }
+
+  const imgEscaped = itemXml.match(/(?:&lt;|<)img[^>]+src=(?:&quot;|"|')([^"'>&]+)(?:&quot;|"|')/i);
+  if (imgEscaped && imgEscaped[1]) {
+    let url = imgEscaped[1].replace(/&amp;/g, '&').trim();
+    if (/^https?:\/\//i.test(url) && !url.includes('1541872703-74c5e44368f9') && !url.includes('1x1') && !url.includes('spacer')) {
+      return url;
+    }
+  }
+
+  // 4. Check raw image links ending in common extensions
+  const rawImg = itemXml.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/i);
+  if (rawImg && rawImg[0]) {
+    let url = rawImg[0].replace(/&amp;/g, '&').trim();
+    if (!url.includes('1541872703-74c5e44368f9') && !url.includes('1x1') && !url.includes('favicon')) {
+      return url;
+    }
+  }
+
   return defaultImage;
 }
 

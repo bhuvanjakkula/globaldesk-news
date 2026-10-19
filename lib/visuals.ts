@@ -132,7 +132,8 @@ export function getArticleVisual(article: {
 
   // PRIORITY 1: REAL PUBLISHER IMAGE (Exact image extracted from WSJ, NYT, CNN, Fox News, ABC News, WashTimes, BBC, NASA)
   const realImage = (article.image_url || '').trim();
-  if (realImage.startsWith('http://') || realImage.startsWith('https://')) {
+  const isBannedImage = realImage.includes('1541872703-74c5e44368f9');
+  if ((realImage.startsWith('http://') || realImage.startsWith('https://')) && !isBannedImage) {
     let topicLabel = article.category?.name || 'Live Syndicate Wire';
     for (const item of KEYWORD_PHOTOS) {
       if (item.pattern.test(text)) {
