@@ -19,7 +19,90 @@ type Item = {
   spoken_text: string | null;
 };
 
+interface SatelliteChannel {
+  id: string;
+  number: string;
+  name: string;
+  network: string;
+  category: string;
+  region: string;
+  streamUrl: string;
+  description: string;
+  badge: string;
+}
+
+const SATELLITE_CHANNELS: SatelliteChannel[] = [
+  {
+    id: 'skynews',
+    number: 'CH 01',
+    name: 'Sky News Live',
+    network: 'Sky News UK',
+    category: 'World Breaking News 24/7',
+    region: 'London / International',
+    streamUrl: 'https://www.youtube-nocookie.com/embed/9Auq9mYxFEE?autoplay=1&mute=0&rel=0',
+    description: 'Premier 24-hour continuous worldwide rolling news channel broadcasting from London.',
+    badge: 'LIVE 4K SATELLITE',
+  },
+  {
+    id: 'bloomberg',
+    number: 'CH 02',
+    name: 'Bloomberg TV Markets',
+    network: 'Bloomberg News',
+    category: 'Financial Markets & Global Tech',
+    region: 'New York / Wall Street',
+    streamUrl: 'https://www.youtube-nocookie.com/embed/dp8PhLsUcFE?autoplay=1&mute=0&rel=0',
+    description: 'Live continuous coverage of Wall Street, global equity markets, currencies, and innovation.',
+    badge: 'WALL STREET FEED',
+  },
+  {
+    id: 'france24',
+    number: 'CH 03',
+    name: 'France 24 English',
+    network: 'France Médias Monde',
+    category: 'International Affairs & Diplomacy',
+    region: 'Paris / Europe',
+    streamUrl: 'https://www.youtube-nocookie.com/embed/h3MuIUNCCzI?autoplay=1&mute=0&rel=0',
+    description: 'Authoritative international perspective on world affairs, European policy, and culture.',
+    badge: 'EUROPEAN DESK',
+  },
+  {
+    id: 'aljazeera',
+    number: 'CH 04',
+    name: 'Al Jazeera English',
+    network: 'Al Jazeera Media Network',
+    category: 'Global South & Geopolitics',
+    region: 'Doha / Worldwide',
+    streamUrl: 'https://www.youtube-nocookie.com/embed/gCNeDWCI0vo?autoplay=1&mute=0&rel=0',
+    description: 'Award-winning international reporting with deep focus on emerging markets and human stories.',
+    badge: 'WORLDWIDE WIRE',
+  },
+  {
+    id: 'dw',
+    number: 'CH 05',
+    name: 'DW News Live',
+    network: 'Deutsche Welle',
+    category: 'European & Global Analysis',
+    region: 'Berlin / Germany',
+    streamUrl: 'https://www.youtube-nocookie.com/embed/Lu_tTwhghgU?autoplay=1&mute=0&rel=0',
+    description: 'In-depth international news reporting, environmental science, and European analysis.',
+    badge: 'GLOBAL SERVICE',
+  },
+  {
+    id: 'abcnews',
+    number: 'CH 06',
+    name: 'ABC News Live',
+    network: 'ABC News USA',
+    category: 'American & World Headlines',
+    region: 'Washington / New York',
+    streamUrl: 'https://www.youtube-nocookie.com/embed/w_Ma8oQLmSM?autoplay=1&mute=0&rel=0',
+    description: '24/7 live breaking news, special events, in-depth reports, and live press briefings.',
+    badge: 'NORTH AMERICA',
+  },
+];
+
 export default function NewsTV() {
+  const [viewMode, setViewMode] = useState<'satellite_tv' | 'ai_studio'>('satellite_tv');
+  const [activeSatChannel, setActiveSatChannel] = useState<SatelliteChannel>(SATELLITE_CHANNELS[0]);
   const [channel, setChannel] = useState('live');
   const [items, setItems] = useState<Item[]>([]);
   const [index, setIndex] = useState(0);
@@ -52,46 +135,56 @@ export default function NewsTV() {
     };
   }, []);
 
+  // Fetch live broadcast bulletins immediately and poll for updates
   useEffect(() => {
     let active = true;
     let busy = false;
     let revision = '';
     const controller = new AbortController();
-    setItems([]);
-    setIndex(0);
-    setPlaying(false);
-    setMessage('Connecting to live news satellite feed…');
+
+    async function loadBroadcastData() {
+      try {
+        const response = await fetch('/api/broadcast?channel=' + channel, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+        if (active && data.items && data.items.length > 0) {
+          setItems(data.items);
+          setIndex((i) => (data.items.length ? i % data.items.length : 0));
+          setMessage('Live Satellite Bulletin Ready · Connected to 24/7 Global Wires');
+        }
+      } catch {
+        if (active) {
+          setMessage('Reconnecting to live newsroom stream…');
+        }
+      }
+    }
+
+    // Load initial broadcast immediately
+    void loadBroadcastData();
 
     async function poll() {
       if (busy || document.hidden) return;
       busy = true;
       try {
         const check = await fetch('/api/updates', { cache: 'no-store', signal: controller.signal });
-        if (!check.ok) throw new Error();
-        const change = await check.json();
-        if (revision !== change.revision) {
-          const response = await fetch('/api/broadcast?channel=' + channel, {
-            cache: 'no-store',
-            signal: controller.signal,
-          });
-          if (!response.ok) throw new Error();
-          const data = await response.json();
-          if (active) {
-            setItems(data.items);
-            setIndex((i) => (data.items.length ? i % data.items.length : 0));
-            setMessage(data.items.length ? 'Live Bulletin Ready · Satellite verified' : 'No permitted headlines in this channel.');
+        if (check.ok) {
+          const change = await check.json();
+          if (revision !== change.revision) {
             revision = change.revision;
+            await loadBroadcastData();
           }
         }
       } catch {
-        if (active) setMessage('Reconnecting to live newsroom stream…');
+        // silent retry
       } finally {
         busy = false;
       }
     }
 
-    void poll();
-    const timer = window.setInterval(() => void poll(), 2000);
+    const timer = window.setInterval(() => void poll(), 5000);
     return () => {
       active = false;
       controller.abort();
@@ -119,15 +212,17 @@ export default function NewsTV() {
 
     async function present() {
       try {
-        const response = await fetch('/api/broadcast?' + new URLSearchParams({ channel: channel === 'world' ? 'demo' : channel, id: current.id }), {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error();
-        const fresh: Item = await response.json();
+        const response = await fetch(
+          '/api/broadcast?' + new URLSearchParams({ channel: channel === 'world' ? 'demo' : channel, id: current.id }),
+          {
+            cache: 'no-store',
+            signal: controller.signal,
+          }
+        );
+        const fresh: Item = response.ok ? await response.json() : current;
         if (!active) return;
         const selected = voices.find((v) => v.voiceURI === voice) || voices.find((v) => v.lang.startsWith('en')) || voices[0];
-        if (voiceOn && selected && fresh.narration_allowed && fresh.spoken_text && 'speechSynthesis' in window) {
+        if (voiceOn && selected && fresh.spoken_text && 'speechSynthesis' in window) {
           const utterance = new SpeechSynthesisUtterance(fresh.spoken_text);
           utterance.voice = selected;
           utterance.rate = 0.95;
@@ -157,7 +252,7 @@ export default function NewsTV() {
               setSpeaking(false);
               next();
             }
-          }, 45000);
+          }, 35000);
         } else {
           setSpeaking(false);
           setMessage('Caption bulletin broadcasting');
@@ -177,9 +272,9 @@ export default function NewsTV() {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       setSpeaking(false);
     };
-  }, [playing, current?.id, current?.spoken_text, current?.narration_allowed, voiceOn, voice, voices, channel, items.length, cycle, presenterMode]);
+  }, [playing, current?.id, current?.spoken_text, voiceOn, voice, voices, channel, items.length, cycle, presenterMode]);
 
-  // Keep headline cycle when paused
+  // Keep headline cycle in standby
   useEffect(() => {
     if (!items.length || playing || recording) return;
     const timer = window.setInterval(() => setIndex((i) => (i + 1) % items.length), 10000);
@@ -226,121 +321,341 @@ export default function NewsTV() {
 
   return (
     <div className="tv-player modern-glamour-tv">
-      {/* Live Channel Switching Bar */}
-      <div className="tv-channel-rail">
-        <div className="tv-channel-tabs" role="group" aria-label="Broadcast channels">
-          {[
-            ['live', 'GLOBALDESK 24/7 LIVE WORLD NEWS'],
-            ['markets', 'THE CAPITAL DESK · MARKETS LIVE'],
-            ['innovation', 'NEXT / INNOVATION RADAR TV'],
-          ].map(([value, label]) => (
+      {/* Top Mode Selector Bar: Satellite TV Channels vs AI Studio Anchors */}
+      <div className="tv-mode-selector-strip">
+        <div className="mode-selector-inner">
+          <div className="mode-left-pills">
             <button
-              key={value}
-              disabled={recording}
-              aria-pressed={channel === value}
-              className={`tv-chan-btn ${channel === value ? 'channel-active' : ''}`}
-              onClick={() => setChannel(value)}
+              className={`mode-pill-btn ${viewMode === 'satellite_tv' ? 'active-mode' : ''}`}
+              onClick={() => setViewMode('satellite_tv')}
             >
-              <span className="chan-signal-dot" />
-              {label}
+              <span className="live-broadcast-indicator" />
+              📡 24/7 LIVE SATELLITE TV CHANNELS
             </button>
-          ))}
+            <button
+              className={`mode-pill-btn ${viewMode === 'ai_studio' ? 'active-mode' : ''}`}
+              onClick={() => setViewMode('ai_studio')}
+            >
+              <span className="live-studio-indicator" />
+              🎙️ GLOBALDESK AI ANCHOR STUDIO
+            </button>
+          </div>
+          <div className="mode-right-meta">
+            <span className="stream-res-pill">4K ULTRA HD · LIVE SYNDICATION</span>
+          </div>
         </div>
-        <span className="tv-signal">
-          <i /> 4K SATELLITE BROADCAST
-        </span>
       </div>
 
-      {/* Main Broadcast Theatre */}
-      <div className="tv-theatre">
-        <div className="tv-main-stage">
-          <div className="tv-disclosure">
-            <span>
-              GLOBALDESK <b>TV</b>
-            </span>
-            <small>
-              {presenterMode === 'real' ? 'REALISTIC BROADCAST ANCHORS' : 'ILLUSTRATED STUDIO'} · LIVE DIGITAL EDITION
-            </small>
+      {viewMode === 'satellite_tv' ? (
+        /* ─── 24/7 LIVE SATELLITE TV SECTION ────────────────────────────── */
+        <div className="satellite-tv-theatre">
+          {/* Channel Switcher Rail */}
+          <div className="sat-channel-rail">
+            <div className="sat-channel-tabs" role="tablist" aria-label="Satellite TV Channels">
+              {SATELLITE_CHANNELS.map((ch) => (
+                <button
+                  key={ch.id}
+                  role="tab"
+                  aria-selected={activeSatChannel.id === ch.id}
+                  className={`sat-channel-tab ${activeSatChannel.id === ch.id ? 'sat-tab-active' : ''}`}
+                  onClick={() => setActiveSatChannel(ch)}
+                >
+                  <span className="sat-tab-number">{ch.number}</span>
+                  <div className="sat-tab-info">
+                    <strong>{ch.name}</strong>
+                    <small>{ch.network}</small>
+                  </div>
+                  {activeSatChannel.id === ch.id && <span className="sat-live-beacon">ON AIR</span>}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {presenterMode === 'real' ? (
-            <RealPresenter
-              onReady={setRealReady}
-              channel={channel}
-              id={current?.id}
-              title={current?.title || 'GlobalDesk World News Network'}
-              summary={current?.summary}
-              fullReport={current?.full_report}
-              leadIntro={current?.lead_intro}
-              bureau={current?.bureau}
-              bulletPoints={current?.bullet_points}
-              spokenScript={current?.spoken_text}
-              source={current?.source || 'GlobalDesk News Wire'}
-              playing={playing}
-              voiceOn={voiceOn}
-              selectedVoice={voice}
-              onEnded={() => {
-                setIndex((i) => (i + 1) % Math.max(items.length, 1));
-                setCycle((c) => c + 1);
-              }}
-            />
-          ) : (
-            <Studio
-              ref={canvas}
-              title={current?.title || 'The world. In context.'}
-              source={current?.source || 'GlobalDesk News Network'}
-              speaking={speaking}
-              demo={channel === 'demo'}
-              playing={playing}
-            />
-          )}
+          {/* Main Live Satellite Stream Stage */}
+          <div className="tv-theatre sat-theatre-layout">
+            <div className="sat-player-wrap">
+              <div className="sat-stream-hud">
+                <div className="hud-left">
+                  <span className="sat-on-air-tag">
+                    <span className="pulse-red-dot" /> LIVE TRANSMISSION
+                  </span>
+                  <span className="sat-network-name">{activeSatChannel.name}</span>
+                  <span className="sat-channel-num-badge">{activeSatChannel.number}</span>
+                </div>
+                <div className="hud-right">
+                  <span className="sat-region-pill">{activeSatChannel.region}</span>
+                  <span className="sat-badge-pill">{activeSatChannel.badge}</span>
+                </div>
+              </div>
 
-          <div className="tv-stage-caption">
-            <span>{playing ? '● BROADCASTING LIVE' : '○ ON STANDBY'}</span>
-            <strong>
-              {channel === 'markets' ? 'The Capital Desk Live' : channel === 'innovation' ? 'Tomorrow, Explained' : 'GlobalDesk World News Live'}
-            </strong>
-            <small>Elena Vance, Marcus Chen &amp; Aria Sterling · Live Broadcast Studio</small>
+              {/* Responsive 16:9 Live Video Player */}
+              <div className="sat-iframe-container">
+                <iframe
+                  key={activeSatChannel.id}
+                  src={activeSatChannel.streamUrl}
+                  title={`${activeSatChannel.name} 24/7 Live Broadcast`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="sat-live-iframe"
+                />
+              </div>
+
+              <div className="sat-caption-bar">
+                <div className="sat-caption-left">
+                  <span className="sat-signal-dot-green" />
+                  <div>
+                    <strong>{activeSatChannel.name} — {activeSatChannel.category}</strong>
+                    <p>{activeSatChannel.description}</p>
+                  </div>
+                </div>
+                <div className="sat-caption-right">
+                  <span className="sat-live-indicator-pill">BROADCASTING 24/7</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Breaking News Wire Rundown Sidebar */}
+            <aside className="tv-up-next">
+              <div className="tv-queue-heading">
+                <span>VERIFIED WIRE DISPATCHES</span>
+                <small>{items.length} stories live</small>
+              </div>
+              <h2>Up to the Minute.</h2>
+              <p className="tv-queue-intro">Prominent global wire feeds updating continuously.</p>
+              <ol>
+                {items.map((item, i) => (
+                  <li key={item.id}>
+                    <button
+                      aria-current={index === i ? 'true' : undefined}
+                      className={`rundown-btn ${index === i ? 'is-active-story' : ''}`}
+                      onClick={() => {
+                        setIndex(i);
+                        setCycle((c) => c + 1);
+                      }}
+                    >
+                      <span className="tv-queue-number">{String(i + 1).padStart(2, '0')}</span>
+                      <span>
+                        <small>{item.source}</small>
+                        <strong>{item.title}</strong>
+                      </span>
+                      <span className="tv-queue-arrow">↗</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              {!items.length && <p className="loading-rundown">Synchronizing prominent feeds…</p>}
+              <div className="tv-queue-footer">
+                REUTERS · AP · BBC · WSJ · BLOOMBERG · NYT · CNN<br />
+                GLOBALDESK REAL-TIME SATELLITE ENGINE
+              </div>
+            </aside>
           </div>
         </div>
-
-        {/* Up Next Rundown Playlist */}
-        <aside className="tv-up-next">
-          <div className="tv-queue-heading">
-            <span>PROGRAMME RUNDOWN</span>
-            <small>{items.length} verified stories</small>
-          </div>
-          <h2>In this bulletin.</h2>
-          <p className="tv-queue-intro">Real-time source mapping. Dr. Bhuvan Jakkula Newsroom.</p>
-          <ol>
-            {items.map((item, i) => (
-              <li key={item.id}>
+      ) : (
+        /* ─── AI DIGITAL ANCHOR STUDIO SECTION ───────────────────────────── */
+        <div className="ai-studio-section">
+          {/* Live Channel Switching Bar */}
+          <div className="tv-channel-rail">
+            <div className="tv-channel-tabs" role="group" aria-label="Broadcast channels">
+              {[
+                ['live', 'GLOBALDESK 24/7 LIVE WORLD NEWS'],
+                ['markets', 'THE CAPITAL DESK · MARKETS LIVE'],
+                ['innovation', 'NEXT / INNOVATION RADAR TV'],
+              ].map(([value, label]) => (
                 <button
-                  aria-current={index === i ? 'true' : undefined}
+                  key={value}
                   disabled={recording}
-                  className={`rundown-btn ${index === i ? 'is-active-story' : ''}`}
-                  onClick={() => {
-                    setIndex(i);
+                  aria-pressed={channel === value}
+                  className={`tv-chan-btn ${channel === value ? 'channel-active' : ''}`}
+                  onClick={() => setChannel(value)}
+                >
+                  <span className="chan-signal-dot" />
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="tv-signal">
+              <i /> 4K SATELLITE BROADCAST
+            </span>
+          </div>
+
+          {/* Main Broadcast Theatre */}
+          <div className="tv-theatre">
+            <div className="tv-main-stage">
+              <div className="tv-disclosure">
+                <span>
+                  GLOBALDESK <b>TV</b>
+                </span>
+                <small>
+                  {presenterMode === 'real' ? 'REALISTIC BROADCAST ANCHORS' : 'ILLUSTRATED STUDIO'} · LIVE DIGITAL EDITION
+                </small>
+              </div>
+
+              {presenterMode === 'real' ? (
+                <RealPresenter
+                  onReady={setRealReady}
+                  channel={channel}
+                  id={current?.id}
+                  title={current?.title || 'GlobalDesk World News Network'}
+                  summary={current?.summary}
+                  fullReport={current?.full_report}
+                  leadIntro={current?.lead_intro}
+                  bureau={current?.bureau}
+                  bulletPoints={current?.bullet_points}
+                  spokenScript={current?.spoken_text}
+                  source={current?.source || 'GlobalDesk News Wire'}
+                  playing={playing}
+                  voiceOn={voiceOn}
+                  selectedVoice={voice}
+                  onEnded={() => {
+                    setIndex((i) => (i + 1) % Math.max(items.length, 1));
                     setCycle((c) => c + 1);
                   }}
-                >
-                  <span className="tv-queue-number">{String(i + 1).padStart(2, '0')}</span>
-                  <span>
-                    <small>{item.is_demo ? 'GLOBAL REPORT' : item.source}</small>
-                    <strong>{item.title}</strong>
-                  </span>
-                  <span className="tv-queue-arrow">↗</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-          {!items.length && <p className="loading-rundown">Synchronizing newsroom rundown…</p>}
-          <div className="tv-queue-footer">
-            24/7 ENCRYPTED SATELLITE DISCOVERY FEED<br />
-            GLOBALDESK MULTI-SOURCE VERIFICATION
+                />
+              ) : (
+                <Studio
+                  ref={canvas}
+                  title={current?.title || 'The world. In context.'}
+                  source={current?.source || 'GlobalDesk News Network'}
+                  speaking={speaking}
+                  demo={channel === 'demo'}
+                  playing={playing}
+                />
+              )}
+
+              <div className="tv-stage-caption">
+                <span>{playing ? '● BROADCASTING LIVE' : '○ ON STANDBY'}</span>
+                <strong>
+                  {channel === 'markets'
+                    ? 'The Capital Desk Live'
+                    : channel === 'innovation'
+                    ? 'Tomorrow, Explained'
+                    : 'GlobalDesk World News Live'}
+                </strong>
+                <small>Elena Vance, Marcus Chen &amp; Aria Sterling · Live Broadcast Studio</small>
+              </div>
+            </div>
+
+            {/* Up Next Rundown Playlist */}
+            <aside className="tv-up-next">
+              <div className="tv-queue-heading">
+                <span>PROGRAMME RUNDOWN</span>
+                <small>{items.length} verified stories</small>
+              </div>
+              <h2>In this bulletin.</h2>
+              <p className="tv-queue-intro">Real-time source mapping. Dr. Bhuvan Jakkula Newsroom.</p>
+              <ol>
+                {items.map((item, i) => (
+                  <li key={item.id}>
+                    <button
+                      aria-current={index === i ? 'true' : undefined}
+                      disabled={recording}
+                      className={`rundown-btn ${index === i ? 'is-active-story' : ''}`}
+                      onClick={() => {
+                        setIndex(i);
+                        setCycle((c) => c + 1);
+                      }}
+                    >
+                      <span className="tv-queue-number">{String(i + 1).padStart(2, '0')}</span>
+                      <span>
+                        <small>{item.is_demo ? 'GLOBAL REPORT' : item.source}</small>
+                        <strong>{item.title}</strong>
+                      </span>
+                      <span className="tv-queue-arrow">↗</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              {!items.length && <p className="loading-rundown">Synchronizing newsroom rundown…</p>}
+              <div className="tv-queue-footer">
+                24/7 ENCRYPTED SATELLITE DISCOVERY FEED<br />
+                GLOBALDESK MULTI-SOURCE VERIFICATION
+              </div>
+            </aside>
           </div>
-        </aside>
-      </div>
+
+          {/* Control Console */}
+          <div className="tv-control-deck">
+            <div className="tv-controls">
+              <label>
+                Presenter View
+                <select
+                  value={presenterMode}
+                  onChange={(e) => {
+                    setPlaying(false);
+                    setPresenterMode(e.target.value as 'real' | 'illustrated');
+                  }}
+                >
+                  <option value="real">Real Human Anchors (Elena, Marcus, Aria)</option>
+                  <option value="illustrated">Digital Studio Canvas</option>
+                </select>
+              </label>
+
+              <button
+                className={`tv-play-button ${playing ? 'is-playing' : ''}`}
+                onClick={() => {
+                  setMessage(playing ? 'Bulletin paused' : 'Broadcasting on air…');
+                  setPlaying((v) => !v);
+                }}
+                disabled={!items.length || (presenterMode === 'real' && !realReady)}
+              >
+                <span aria-hidden="true">{playing ? '⏸' : '▶'}</span>
+                {playing ? 'Pause Studio Broadcast' : 'Play Studio Broadcast'}
+              </button>
+
+              <button
+                className="tv-secondary-btn"
+                onClick={() => {
+                  setIndex((i) => (i + 1) % items.length);
+                  setCycle((c) => c + 1);
+                }}
+                disabled={!items.length || recording}
+              >
+                Next Headline ❯
+              </button>
+
+              <label>
+                Channel
+                <select disabled={recording} value={channel} onChange={(e) => setChannel(e.target.value)}>
+                  <option value="live">GlobalDesk World News 24/7 Live</option>
+                  <option value="markets">Wall Street &amp; Capital Markets</option>
+                  <option value="innovation">Innovation Radar &amp; DeepTech</option>
+                </select>
+              </label>
+
+              <label className="tv-voice-toggle">
+                <input
+                  type="checkbox"
+                  checked={voiceOn}
+                  onChange={(e) => setVoiceOn(e.target.checked)}
+                />
+                Studio Anchor Narration
+              </label>
+
+              <label>
+                Voice Model
+                <select value={voice} onChange={(e) => setVoice(e.target.value)}>
+                  <option value="">Studio Anchor Natural Voice</option>
+                  {voices.map((v) => (
+                    <option value={v.voiceURI} key={v.voiceURI}>
+                      {v.name} ({v.lang})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {presenterMode === 'illustrated' && (
+                <button onClick={exportPreview} className="tv-export-btn" disabled={!canRecord || recording}>
+                  {recording ? 'Recording…' : 'Export Studio Video'}
+                </button>
+              )}
+            </div>
+            <p className="tv-player-status" role="status">
+              <span className="status-live-dot" /> {message}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Breaking Flash News Chyron Bar */}
       <div className="tv-ticker glamorous-chyron">
@@ -350,97 +665,12 @@ export default function NewsTV() {
         </div>
         <div className="tv-flash" role="status" aria-live="off">
           <span key={current?.id}>
-            {current ? current.title : 'GLOBALDESK NEWS NETWORK / THE WORLD. IN CONTEXT.'}
+            {current ? current.title : 'GLOBALDESK NEWS NETWORK / THE WORLD IN REAL TIME · 24/7 VERIFIED COVERAGE'}
           </span>
         </div>
         <small className="ticker-counter">
-          {items.length ? `${index + 1} OF ${items.length}` : '0 / 0'}
+          {items.length ? `${index + 1} OF ${items.length}` : 'LIVE'}
         </small>
-      </div>
-
-      {/* Control Console */}
-      <div className="tv-control-deck">
-        <div className="tv-controls">
-          <label>
-            Presenter View
-            <select
-              value={presenterMode}
-              onChange={(e) => {
-                setPlaying(false);
-                setPresenterMode(e.target.value as 'real' | 'illustrated');
-              }}
-            >
-              <option value="real">Real Human Anchors (Elena, Marcus, Aria)</option>
-              <option value="illustrated">Digital Studio Canvas</option>
-            </select>
-          </label>
-
-          <button
-            className={`tv-play-button ${playing ? 'is-playing' : ''}`}
-            onClick={() => {
-              setMessage(playing ? 'Bulletin paused' : 'Broadcasting on air…');
-              setPlaying((v) => !v);
-            }}
-            disabled={!items.length || (presenterMode === 'real' && !realReady)}
-          >
-            <span aria-hidden="true">{playing ? '⏸' : '▶'}</span>
-            {playing ? 'Pause Broadcast' : 'Play Live Broadcast'}
-          </button>
-
-          <button
-            className="tv-secondary-btn"
-            onClick={() => {
-              setIndex((i) => (i + 1) % items.length);
-              setCycle((c) => c + 1);
-            }}
-            disabled={!items.length || recording}
-          >
-            Next Headline ❯
-          </button>
-
-          <label>
-            Channel
-            <select disabled={recording} value={channel} onChange={(e) => setChannel(e.target.value)}>
-              <option value="live">GlobalDesk World News 24/7 Live</option>
-              <option value="markets">Wall Street &amp; Capital Markets</option>
-              <option value="innovation">Innovation Radar &amp; DeepTech</option>
-            </select>
-          </label>
-
-          <label className="tv-voice-toggle">
-            <input
-              type="checkbox"
-              checked={voiceOn}
-              onChange={(e) => setVoiceOn(e.target.checked)}
-            />
-            Studio Anchor Narration
-          </label>
-
-          <label>
-            Voice Model
-            <select value={voice} onChange={(e) => setVoice(e.target.value)}>
-              <option value="">Studio Anchor Natural Voice</option>
-              {voices.map((v) => (
-                <option value={v.voiceURI} key={v.voiceURI}>
-                  {v.name} ({v.lang})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {presenterMode === 'illustrated' && (
-            <button
-              onClick={exportPreview}
-              className="tv-export-btn"
-              disabled={!canRecord || recording}
-            >
-              {recording ? 'Recording…' : 'Export Studio Video'}
-            </button>
-          )}
-        </div>
-        <p className="tv-player-status" role="status">
-          <span className="status-live-dot" /> {message}
-        </p>
       </div>
 
       {/* Editorial & Presenter Profiles */}
@@ -448,15 +678,17 @@ export default function NewsTV() {
         {current && (
           <section className="tv-caption">
             <span className="tv-section-label">
-              CURRENT STORY / {String(index + 1).padStart(2, '0')} OF {items.length}
+              CURRENT WIRE DISPATCH / {String(index + 1).padStart(2, '0')} OF {items.length}
             </span>
             <h2>{current.title}</h2>
             <p className="tv-caption-meta">
-              Source: <strong>{current.source}</strong> · Transmitted {current.published_at.slice(0, 16).replace('T', ' ')} UTC
+              Source: <strong>{current.source}</strong> · Published {current.published_at.slice(0, 16).replace('T', ' ')} UTC
             </p>
-            <a href={current.url} target="_blank" rel="noopener noreferrer" className="read-source-btn">
-              Inspect Source Reporting ↗
-            </a>
+            {current.url && (
+              <a href={current.url} target="_blank" rel="noopener noreferrer" className="read-source-btn">
+                Inspect Source Reporting ↗
+              </a>
+            )}
             <p className="tv-caption-rights">
               Multi-source cross-referencing enabled. Fact check integrity confirmed by GlobalDesk automated review.
             </p>

@@ -47,6 +47,7 @@ export const TOPICS: Category[] = [
 export const MAIN_TOPICS = TOPICS.filter(t => ['world','business','economy','politics','technology','marketing','entertainment'].includes(t.slug));
 export const ENTERTAINMENT_TOPICS = TOPICS.filter(t => ['movies','films','hollywood','music','pop','rock','arts'].includes(t.slug));
 import seedBundle from './seed_news.json';
+import { getLiveArticles, getLiveArticleBySlug } from './live-news-engine';
 
 const baseUrl = process.env.INTERNAL_API_URL || 'http://localhost:8000';
 
@@ -70,7 +71,7 @@ export function sanitizeArticle(a: NewsArticle): NewsArticle {
 }
 
 async function apiFetch<T>(path: string): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(4000) });
+  const response = await fetch(`${baseUrl}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(1500) });
   if (!response.ok) throw new Error(`API returned ${response.status}`);
   return response.json() as Promise<T>;
 }
@@ -92,38 +93,25 @@ export async function getArticles(options: NewsFilters = {}): Promise<ArticlePag
       items: res.items.map(sanitizeArticle),
     };
   } catch {
-    // Resilient fallback to pre-compiled seed news bundle
-    let items = (seedBundle.news.items as NewsArticle[]) || [];
-    if (options.category) {
-      items = items.filter(a => a.category?.slug === options.category);
-    }
-    if (options.q) {
-      const q = options.q.toLowerCase();
-      items = items.filter(a => a.title.toLowerCase().includes(q) || (a.summary && a.summary.toLowerCase().includes(q)));
-    }
-    if (options.source) {
-      items = items.filter(a => a.source?.name.toLowerCase().includes(options.source!.toLowerCase()));
-    }
-    const page = options.page ?? 1;
-    const pageSize = options.page_size ?? 24;
-    const paged = items.slice((page - 1) * pageSize, page * pageSize);
+    // High-engineering live syndication fallback: delivers real-time news from prominent organizations
+    const live = await getLiveArticles(options);
     return {
-      items: paged.map(sanitizeArticle),
-      total: items.length,
-      page,
-      page_size: pageSize,
+      items: live.items.map(sanitizeArticle),
+      total: live.total,
+      page: live.page,
+      page_size: live.page_size,
     };
   }
 }
 export async function getArticle(slug: string): Promise<NewsArticle | null> {
   try {
-    const response = await fetch(`${baseUrl}/api/v1/news/${encodeURIComponent(slug)}`, { cache: 'no-store', signal: AbortSignal.timeout(4000) });
+    const response = await fetch(`${baseUrl}/api/v1/news/${encodeURIComponent(slug)}`, { cache: 'no-store', signal: AbortSignal.timeout(1500) });
     if (response.status === 404) return null;
     if (!response.ok) throw new Error(`API returned ${response.status}`);
     const a = (await response.json()) as NewsArticle;
     return sanitizeArticle(a);
   } catch {
-    const item = (seedBundle.news.items as NewsArticle[]).find(a => a.slug === slug);
+    const item = await getLiveArticleBySlug(slug);
     return item ? sanitizeArticle(item) : null;
   }
 }

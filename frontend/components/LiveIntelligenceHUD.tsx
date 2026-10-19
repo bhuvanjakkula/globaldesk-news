@@ -41,38 +41,36 @@ export default function LiveIntelligenceHUD({ initialArticles, totalCount }: Liv
   const [selectedSatId, setSelectedSatId] = useState<string>('all');
   const [satelliteAgencies, setSatelliteAgencies] = useState<string[]>([]);
 
+  const fetchLatest = async () => {
+    try {
+      setIsSyncing(true);
+      const res = await fetch('/api/news?page=1&page_size=100');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          setArticles((prev) => {
+            if (prev.length > 0 && data.items[0].slug !== prev[0].slug) {
+              setHasNewArrivals(true);
+              setTimeout(() => setHasNewArrivals(false), 8000);
+            }
+            return data.items;
+          });
+          if (data.total) setLiveTotal(data.total);
+          const now = new Date();
+          setLastTick(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        }
+      }
+    } catch {
+      // network silent retry
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Auto-refresh every 15 seconds to keep every segment up to the minute
   useEffect(() => {
-    let isMounted = true;
-    const fetchLatest = async () => {
-      try {
-        setIsSyncing(true);
-        const res = await fetch('/api/news?page=1&page_size=100');
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted && data.items && data.items.length > 0) {
-            setArticles((prev) => {
-              if (prev.length > 0 && data.items[0].slug !== prev[0].slug) {
-                setHasNewArrivals(true);
-                setTimeout(() => setHasNewArrivals(false), 8000);
-              }
-              return data.items;
-            });
-            if (data.total) setLiveTotal(data.total);
-            const now = new Date();
-            setLastTick(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-          }
-        }
-      } catch {
-        // network silent retry
-      } finally {
-        if (isMounted) setIsSyncing(false);
-      }
-    };
-
     const interval = setInterval(fetchLatest, 15000); // 15 seconds live sync
     return () => {
-      isMounted = false;
       clearInterval(interval);
     };
   }, []);
@@ -155,13 +153,34 @@ export default function LiveIntelligenceHUD({ initialArticles, totalCount }: Liv
         </div>
 
         <div className="hud-metric-card hud-right-card">
-          <span className="hud-metric-label">NEWSROOM ENGINE STATUS</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="hud-metric-label">NEWSROOM ENGINE STATUS</span>
+            <button
+              type="button"
+              onClick={() => void fetchLatest()}
+              disabled={isSyncing}
+              style={{
+                background: 'rgba(56, 189, 248, 0.15)',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                color: '#38bdf8',
+                fontSize: '9px',
+                fontWeight: 800,
+                padding: '3px 8px',
+                borderRadius: '3px',
+                cursor: 'pointer',
+                letterSpacing: '0.8px',
+              }}
+              title="Instantly re-fetch latest prominent news feeds"
+            >
+              {isSyncing ? 'SYNCING...' : '⚡ SYNC NOW'}
+            </button>
+          </div>
           <div className="hud-engine-status" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className={isSyncing ? 'pulse-blue' : 'pulse-green'} />
             <span>{isSyncing ? 'SYNCING 15s PULSE...' : 'LIVE AUTO-SYNC: 15s'}</span>
           </div>
           <span className="hud-metric-sub">
-            LAST TICK: {lastTick} · DR. BHUVAN JAKKULA DESK
+            LAST TICK: {lastTick} · PROMINENT OUTLETS LIVE
           </span>
         </div>
       </div>
