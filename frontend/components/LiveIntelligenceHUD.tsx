@@ -10,18 +10,25 @@ interface LiveIntelligenceHUDProps {
 }
 
 const PREMIER_NETWORKS = [
-  'Reuters',
-  'Forbes',
-  'Bloomberg',
-  'The Wall Street Journal',
-  'Financial Times',
-  'The New York Times',
-  'BBC World News',
-  'CNN',
   'Fox News',
+  'The Wall Street Journal',
+  'ABC News',
+  'Reuters',
+  'BBC World News',
+  'Bloomberg',
   'Associated Press',
-  'Variety',
+  'CNN',
+  'CNBC',
+  'The New York Times',
+  'CBS News',
+  'NBC News',
+  'Financial Times',
+  'Forbes',
+  'Al Jazeera',
   'The Guardian',
+  'Politico',
+  'Sky News',
+  'NASA',
 ];
 
 export default function LiveIntelligenceHUD({ initialArticles, totalCount }: LiveIntelligenceHUDProps) {

@@ -196,6 +196,87 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     defaultImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
   },
   {
+    name: 'Fox News World',
+    domain: 'foxnews.com',
+    region: 'Americas / Global Desk',
+    url: 'https://moxie.foxnews.com/google-publisher/world.xml',
+    categorySlug: 'world',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'Fox News Latest',
+    domain: 'foxnews.com',
+    region: 'Americas / Breaking',
+    url: 'https://moxie.foxnews.com/google-publisher/latest.xml',
+    categorySlug: 'politics',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'Fox Business',
+    domain: 'foxbusiness.com',
+    region: 'Americas / Wall Street & Commerce',
+    url: 'https://news.google.com/rss/search?q=source:%22Fox+Business%22&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'business',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'ABC News Top Stories',
+    domain: 'abcnews.go.com',
+    region: 'Americas / Prime Headlines',
+    url: 'https://abcnews.go.com/abcnews/topstories',
+    categorySlug: 'world',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'ABC News International',
+    domain: 'abcnews.go.com',
+    region: 'Americas / World Desk',
+    url: 'https://abcnews.go.com/abcnews/internationalheadlines',
+    categorySlug: 'world',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'CBS News World',
+    domain: 'cbsnews.com',
+    region: 'Americas / Global Affairs',
+    url: 'https://news.google.com/rss/search?q=source:%22CBS+News%22&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'world',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'NBC News World',
+    domain: 'nbcnews.com',
+    region: 'Americas / International',
+    url: 'https://news.google.com/rss/search?q=source:%22NBC+News%22&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'world',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'Politico Politics',
+    domain: 'politico.com',
+    region: 'Americas / Governance & Policy',
+    url: 'https://news.google.com/rss/search?q=source:Politico&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'politics',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'Sky News World',
+    domain: 'skynews.com',
+    region: 'Europe / International',
+    url: 'https://news.google.com/rss/search?q=source:%22Sky+News%22&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'world',
+    country: 'United Kingdom',
+    defaultImage: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
     name: 'Al Jazeera English',
     domain: 'aljazeera.com',
     region: 'Middle East / International',
@@ -425,22 +506,75 @@ async function fetchAllProminentFeeds(): Promise<NewsArticle[]> {
     }
   }
 
-  // Sort strictly by publication date newest first
-  merged.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
+  // --- ROUND-ROBIN MULTI-SOURCE BALANCED DIVERSITY PIPELINE ---
+  // Group deduplicated articles by their publisher source family
+  const familyMap = new Map<string, NewsArticle[]>();
+
+  function getFamilyKey(sourceName: string, domain: string): string {
+    const s = (sourceName + ' ' + domain).toLowerCase();
+    if (s.includes('fox')) return 'Fox News';
+    if (s.includes('wall street') || s.includes('wsj')) return 'The Wall Street Journal';
+    if (s.includes('abc')) return 'ABC News';
+    if (s.includes('reuters')) return 'Reuters';
+    if (s.includes('associated press') || s.includes('ap news')) return 'Associated Press';
+    if (s.includes('bbc')) return 'BBC News';
+    if (s.includes('bloomberg')) return 'Bloomberg';
+    if (s.includes('cnn')) return 'CNN';
+    if (s.includes('cnbc')) return 'CNBC';
+    if (s.includes('new york times') || s.includes('nytimes')) return 'The New York Times';
+    if (s.includes('cbs')) return 'CBS News';
+    if (s.includes('nbc')) return 'NBC News';
+    if (s.includes('financial times') || s.includes('ft.com')) return 'Financial Times';
+    if (s.includes('forbes')) return 'Forbes';
+    if (s.includes('al jazeera')) return 'Al Jazeera';
+    if (s.includes('guardian')) return 'The Guardian';
+    if (s.includes('politico')) return 'Politico';
+    if (s.includes('sky news')) return 'Sky News';
+    if (s.includes('nasa')) return 'NASA';
+    return sourceName || domain || 'Global Wire';
+  }
+
+  for (const item of merged) {
+    const fam = getFamilyKey(item.source?.name || '', item.source?.domain || '');
+    if (!familyMap.has(fam)) familyMap.set(fam, []);
+    familyMap.get(fam)!.push(item);
+  }
+
+  // Sort articles inside each family newest first
+  for (const list of familyMap.values()) {
+    list.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
+  }
+
+  // Round-robin interleave across all families for guaranteed multi-source diversity
+  const balancedMerged: NewsArticle[] = [];
+  const families = Array.from(familyMap.keys());
+  let maxLen = 0;
+  for (const list of familyMap.values()) {
+    if (list.length > maxLen) maxLen = list.length;
+  }
+
+  for (let round = 0; round < maxLen; round++) {
+    for (const fam of families) {
+      const list = familyMap.get(fam);
+      if (list && round < list.length) {
+        balancedMerged.push(list[round]);
+      }
+    }
+  }
 
   // Fallback merge with seed news if feeds yielded few results
-  if (merged.length < 15 && seedBundle?.news?.items) {
+  if (balancedMerged.length < 15 && seedBundle?.news?.items) {
     const seedItems = seedBundle.news.items as NewsArticle[];
     for (const s of seedItems) {
       const titleKey = s.title.toLowerCase().slice(0, 45);
       if (!seenTitles.has(titleKey)) {
         seenTitles.add(titleKey);
-        merged.push(sanitizeArticle(s));
+        balancedMerged.push(sanitizeArticle(s));
       }
     }
   }
 
-  return merged;
+  return balancedMerged.length > 0 ? balancedMerged : merged;
 }
 
 // Background revalidation (stale-while-revalidate)
@@ -617,8 +751,32 @@ export async function getLiveBroadcastBulletin(channel = 'live'): Promise<{
   if (channel === 'markets') categoryFilter = 'business';
   else if (channel === 'innovation') categoryFilter = 'technology';
 
-  const res = await getLiveArticles({ category: categoryFilter, page_size: 25 });
-  const articles = res.items.slice(0, 16);
+  const res = await getLiveArticles({ category: categoryFilter, page_size: 60 });
+  
+  // Guarantee multi-source diversity: pick stories across distinct prominent news organizations
+  const distinctArticles: NewsArticle[] = [];
+  const seenFamilies = new Set<string>();
+
+  for (const art of res.items) {
+    const fam = (art.source?.name || art.source?.domain || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 7);
+    if (!seenFamilies.has(fam)) {
+      seenFamilies.add(fam);
+      distinctArticles.push(art);
+      if (distinctArticles.length >= 16) break;
+    }
+  }
+
+  // Fill up if fewer distinct
+  if (distinctArticles.length < 12) {
+    for (const art of res.items) {
+      if (!distinctArticles.some((d) => d.slug === art.slug)) {
+        distinctArticles.push(art);
+        if (distinctArticles.length >= 16) break;
+      }
+    }
+  }
+
+  const articles = distinctArticles.length > 0 ? distinctArticles : res.items.slice(0, 16);
 
   const bureaus = [
     'GLOBALDESK / LONDON BUREAU',
