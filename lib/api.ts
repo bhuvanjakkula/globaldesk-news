@@ -64,11 +64,14 @@ export function sanitizeArticleText(text: string | null | undefined): string {
   return cleaned.trim();
 }
 
+import { isAuthenticPublisherPhoto } from './visuals';
+
 export function sanitizeArticle(a: NewsArticle): NewsArticle {
   return {
     ...a,
     title: sanitizeArticleText(a.title),
     summary: a.summary ? sanitizeArticleText(a.summary) : null,
+    image_url: isAuthenticPublisherPhoto(a.image_url) ? a.image_url : null,
   };
 }
 

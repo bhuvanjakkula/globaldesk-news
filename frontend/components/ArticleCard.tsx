@@ -21,9 +21,13 @@ export default function ArticleCard({ article, featured = false }: { article: Ne
               <span className="source-dot" />
               {article.source.name}
             </span>
-            {visual.isExactPublisherImage && (
+            {visual.isExactPublisherImage ? (
               <span className="exact-image-badge" title="Authentic Publisher Image Attached">
                 ORIGINAL WIRE PHOTO
+              </span>
+            ) : (
+              <span className="exact-image-badge" style={{ background: 'rgba(15, 23, 42, 0.85)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.12)' }} title="Respective Source Verified Wire Card">
+                VERIFIED SOURCE WIRE
               </span>
             )}
             <span className="visual-time-badge">{visual.readingTime}</span>

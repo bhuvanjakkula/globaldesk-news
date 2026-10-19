@@ -10,6 +10,7 @@
  */
 
 import { NewsArticle, Category, Source, TOPICS, sanitizeArticle } from './api';
+import { isAuthenticPublisherPhoto } from './visuals';
 import seedBundle from './seed_news.json';
 
 interface FeedSourceConfig {
@@ -19,7 +20,6 @@ interface FeedSourceConfig {
   url: string;
   categorySlug: string;
   country: string;
-  defaultImage: string;
 }
 
 const PROMINENT_FEEDS: FeedSourceConfig[] = [
@@ -31,7 +31,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:Reuters&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
     country: 'Global',
-    defaultImage: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Reuters Business',
@@ -40,7 +39,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:Reuters+business&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'business',
     country: 'Global',
-    defaultImage: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Associated Press (AP)',
@@ -49,7 +47,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:%22Associated+Press%22&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
     country: 'Global',
-    defaultImage: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Bloomberg Markets',
@@ -58,7 +55,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:Bloomberg&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'business',
     country: 'Global',
-    defaultImage: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'The Wall Street Journal',
@@ -67,7 +63,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml',
     categorySlug: 'business',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'The Wall Street Journal World',
@@ -76,7 +71,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://feeds.a.dj.com/rss/RSSWorldNews.xml',
     categorySlug: 'world',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'The Wall Street Journal Tech',
@@ -85,7 +79,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://feeds.a.dj.com/rss/RSSTechnology.xml',
     categorySlug: 'technology',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'The New York Times',
@@ -94,7 +87,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
     categorySlug: 'world',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'The New York Times Business',
@@ -103,7 +95,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml',
     categorySlug: 'economy',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'The New York Times Technology',
@@ -112,7 +103,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml',
     categorySlug: 'technology',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'BBC World News',
@@ -121,7 +111,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://feeds.bbci.co.uk/news/world/rss.xml',
     categorySlug: 'world',
     country: 'United Kingdom',
-    defaultImage: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'BBC Business News',
@@ -130,7 +119,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://feeds.bbci.co.uk/news/business/rss.xml',
     categorySlug: 'business',
     country: 'United Kingdom',
-    defaultImage: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'BBC Technology',
@@ -139,7 +127,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://feeds.bbci.co.uk/news/technology/rss.xml',
     categorySlug: 'technology',
     country: 'United Kingdom',
-    defaultImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'CNN International',
@@ -148,7 +135,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'http://rss.cnn.com/rss/edition_world.rss',
     categorySlug: 'world',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'CNN Top Stories',
@@ -157,7 +143,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'http://rss.cnn.com/rss/edition.rss',
     categorySlug: 'politics',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'CNBC Markets',
@@ -166,7 +151,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html',
     categorySlug: 'business',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Financial Times',
@@ -175,7 +159,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:%22Financial+Times%22&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'economy',
     country: 'United Kingdom',
-    defaultImage: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Forbes Business',
@@ -184,7 +167,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://www.forbes.com/business/feed/',
     categorySlug: 'business',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Forbes Innovation',
@@ -193,7 +175,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://www.forbes.com/innovation/feed/',
     categorySlug: 'technology',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Fox News World',
@@ -202,7 +183,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://moxie.foxnews.com/google-publisher/world.xml',
     categorySlug: 'world',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Fox News Latest',
@@ -211,7 +191,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://moxie.foxnews.com/google-publisher/latest.xml',
     categorySlug: 'politics',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Fox Business',
@@ -220,7 +199,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:%22Fox+Business%22&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'business',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'ABC News Top Stories',
@@ -229,7 +207,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://abcnews.go.com/abcnews/topstories',
     categorySlug: 'world',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'ABC News International',
@@ -238,7 +215,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://abcnews.go.com/abcnews/internationalheadlines',
     categorySlug: 'world',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'CBS News World',
@@ -247,7 +223,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:%22CBS+News%22&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'NBC News World',
@@ -256,7 +231,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:%22NBC+News%22&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Politico Politics',
@@ -265,7 +239,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://rss.politico.com/politics-news.xml',
     categorySlug: 'politics',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Sky News World',
@@ -274,7 +247,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:%22Sky+News%22&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
     country: 'United Kingdom',
-    defaultImage: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Al Jazeera English',
@@ -283,7 +255,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://www.aljazeera.com/xml/rss/all.xml',
     categorySlug: 'world',
     country: 'Global',
-    defaultImage: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'The Guardian World',
@@ -292,7 +263,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://www.theguardian.com/world/rss',
     categorySlug: 'world',
     country: 'United Kingdom',
-    defaultImage: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'NASA Space & Discovery',
@@ -301,7 +271,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://www.nasa.gov/news-release/feed/',
     categorySlug: 'technology',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
   },
 
   // --- MARKETING & BRANDING GIANTS ---
@@ -312,7 +281,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:Adweek+OR+source:Digiday+OR+source:%22Marketing+Dive%22&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'marketing',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Forbes CMO & Brand Strategy',
@@ -321,7 +289,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:Forbes+marketing+OR+advertising+OR+branding&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'marketing',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Marketing Week International',
@@ -330,7 +297,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:%22Marketing+Week%22+OR+source:Campaign&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'marketing',
     country: 'United Kingdom',
-    defaultImage: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80',
   },
 
   // --- CULTURE & ENTERTAINMENT WIRE GIANTS ---
@@ -341,7 +307,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://variety.com/feed/',
     categorySlug: 'movies',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'The Hollywood Reporter',
@@ -350,7 +315,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://www.hollywoodreporter.com/feed/',
     categorySlug: 'hollywood',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Deadline Hollywood',
@@ -359,7 +323,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:Deadline&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'entertainment',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Billboard Music Wire',
@@ -368,7 +331,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://www.billboard.com/feed/',
     categorySlug: 'music',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'Rolling Stone Music & Pop Culture',
@@ -377,7 +339,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://news.google.com/rss/search?q=source:%22Rolling+Stone%22+music&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'rock',
     country: 'United States',
-    defaultImage: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
   },
   {
     name: 'BBC Entertainment & Arts',
@@ -386,7 +347,6 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',
     categorySlug: 'arts',
     country: 'United Kingdom',
-    defaultImage: 'https://images.unsplash.com/photo-1499364615650-ec38552f4f34?auto=format&fit=crop&w=1200&q=80',
   },
 ];
 
@@ -415,12 +375,13 @@ function decodeEntities(str: string): string {
 }
 
 // Helper: Extract authentic image URL from XML item
-function extractImageUrl(itemXml: string, defaultImage: string): string {
+// Helper: Extract authentic image URL directly from publisher XML item
+function extractImageUrl(itemXml: string): string | null {
   // 1. Check media:content or media:thumbnail
   const mediaMatches = itemXml.matchAll(/<media:(?:content|thumbnail)[^>]*url=["']([^"']+)["']/gi);
   for (const m of mediaMatches) {
-    let url = m[1].replace(/&amp;/g, '&').trim();
-    if (/^https?:\/\//i.test(url) && !url.includes('1541872703-74c5e44368f9') && !url.includes('1x1')) {
+    const url = m[1].replace(/&amp;/g, '&').trim();
+    if (isAuthenticPublisherPhoto(url)) {
       return url;
     }
   }
@@ -430,39 +391,32 @@ function extractImageUrl(itemXml: string, defaultImage: string): string {
                    itemXml.match(/<enclosure[^>]*type=["']image\/[^"']+["'][^>]*url=["']([^"']+)["']/i) ||
                    itemXml.match(/<enclosure[^>]*url=["']([^"']+)["']/i);
   if (encMatch && encMatch[1]) {
-    let url = encMatch[1].replace(/&amp;/g, '&').trim();
-    if (/^https?:\/\//i.test(url) && !url.includes('1541872703-74c5e44368f9') && !url.includes('1x1')) {
+    const url = encMatch[1].replace(/&amp;/g, '&').trim();
+    if (isAuthenticPublisherPhoto(url)) {
       return url;
     }
   }
 
   // 3. Check <img> tag inside description or content (both direct and HTML-escaped)
-  const imgDirect = itemXml.match(/<img[^>]+src=["']([^"']+)["']/i);
+  const imgDirect = itemXml.match(/<img[^>]+src=["']([^"']+)["']/i) ||
+                    itemXml.match(/(?:&lt;|<)img[^>]+src=(?:&quot;|"|')([^"'>&]+)(?:&quot;|"|')/i);
   if (imgDirect && imgDirect[1]) {
-    let url = imgDirect[1].replace(/&amp;/g, '&').trim();
-    if (/^https?:\/\//i.test(url) && !url.includes('1541872703-74c5e44368f9') && !url.includes('1x1') && !url.includes('spacer')) {
-      return url;
-    }
-  }
-
-  const imgEscaped = itemXml.match(/(?:&lt;|<)img[^>]+src=(?:&quot;|"|')([^"'>&]+)(?:&quot;|"|')/i);
-  if (imgEscaped && imgEscaped[1]) {
-    let url = imgEscaped[1].replace(/&amp;/g, '&').trim();
-    if (/^https?:\/\//i.test(url) && !url.includes('1541872703-74c5e44368f9') && !url.includes('1x1') && !url.includes('spacer')) {
+    const url = imgDirect[1].replace(/&amp;/g, '&').trim();
+    if (isAuthenticPublisherPhoto(url)) {
       return url;
     }
   }
 
   // 4. Check raw image links ending in common extensions
-  const rawImg = itemXml.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/i);
+  const rawImg = itemXml.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp|avif)(?:\?[^\s"'<>]*)?/i);
   if (rawImg && rawImg[0]) {
-    let url = rawImg[0].replace(/&amp;/g, '&').trim();
-    if (!url.includes('1541872703-74c5e44368f9') && !url.includes('1x1') && !url.includes('favicon')) {
+    const url = rawImg[0].replace(/&amp;/g, '&').trim();
+    if (isAuthenticPublisherPhoto(url)) {
       return url;
     }
   }
 
-  return defaultImage;
+  return null;
 }
 
 // Helper: Parse XML items into NewsArticle
@@ -526,7 +480,7 @@ function parseFeedXml(xml: string, config: FeedSourceConfig): NewsArticle[] {
     }
 
     // Image
-    const imageUrl = extractImageUrl(raw, config.defaultImage);
+    const imageUrl = extractImageUrl(raw);
 
     // Slug
     const slug = generateSlug(config.domain, title);

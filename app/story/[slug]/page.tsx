@@ -50,8 +50,8 @@ export default async function Story({params}: Props) {
         <div className="story-hero-media" style={{ margin: '24px 0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', background: '#12141a' }}>
           <img src={visual.imageUrl} alt={article.title} style={{ width: '100%', maxHeight: '520px', objectFit: 'cover', display: 'block' }} />
           <div className="story-hero-caption" style={{ padding: '10px 16px', fontSize: '12px', color: '#94a3b8', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Visual Attribution: {visual.isExactPublisherImage ? `Direct wire photo from ${article.source.name}` : `Editorial wire: ${visual.topicLabel}`}</span>
-            <span>Verified provanence</span>
+            <span>Visual Attribution: {visual.isExactPublisherImage ? `Direct photojournalism wire from ${article.source.name}` : `Respective source newsroom wire masthead: ${article.source.name}`}</span>
+            <span>Verified provenance · Zero generic stock imagery</span>
           </div>
         </div>
       )}
