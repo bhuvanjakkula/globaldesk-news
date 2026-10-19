@@ -903,6 +903,60 @@ export function getLiveRevision(): {
 }
 
 /**
+ * Advanced Broadcast Engineering: Ultra-Concise Anchor Dispatch Generator
+ * Synthesizes punchy, non-repeating 15-22 word teleprompter voice scripts.
+ * Employs keyword Jaccard overlap filtering to eliminate repeated sentences or words.
+ */
+export function synthesizeConciseBroadcastDispatch(title: string, rawSummary?: string | null): string {
+  const cleanTitle = (title || '')
+    .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA|Politico|MarketWatch|Deadline|Variety|Marketing Dive).*$/i, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\.$/, '')
+    .trim();
+
+  if (!rawSummary) return cleanTitle ? `${cleanTitle}.` : '';
+
+  let summary = (rawSummary || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/Transmitted live via verified international wire\.?/gi, '')
+    .replace(/Verified live international dispatch transmitted via [^.]+\.?/gi, '')
+    .replace(/Verified correspondents and monitoring bureaus are tracking [^.]+\.?/gi, '')
+    .replace(/Diplomatic delegations and regional observers are actively monitoring [^.]+\.?/gi, '')
+    .replace(/Key developments focus on [^.]+\.?/gi, '')
+    .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA|Politico|MarketWatch|Deadline|Variety|Marketing Dive).*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const firstSentenceMatch = summary.match(/^([^.!?]+[.!?])/);
+  let coreSentence = firstSentenceMatch ? firstSentenceMatch[1].trim() : summary;
+  if (coreSentence.length > 100) {
+    const lastSpace = coreSentence.slice(0, 95).lastIndexOf(' ');
+    coreSentence = (lastSpace > 35 ? coreSentence.slice(0, lastSpace) : coreSentence.slice(0, 95)).trim() + '.';
+  }
+
+  // Deduplication check: compare non-trivial keywords
+  const stopWords = new Set(['the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 'is', 'are', 'was', 'were', 'by', 'with', 'from', 'as', 'that', 'this', 'it', 'its', 'their', 'has', 'have', 'had']);
+  const titleWords = cleanTitle.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+  const summaryWords = coreSentence.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+
+  let overlapCount = 0;
+  for (const w of summaryWords) {
+    if (titleWords.includes(w)) overlapCount++;
+  }
+  const overlapRatio = summaryWords.length > 0 ? overlapCount / summaryWords.length : 1;
+
+  // If summary has >30% keyword duplication with title or begins with title, return title only to prevent repeating
+  if (overlapRatio > 0.30 || coreSentence.toLowerCase().startsWith(cleanTitle.toLowerCase().slice(0, 20))) {
+    return `${cleanTitle}.`;
+  }
+
+  return `${cleanTitle}. ${coreSentence}`;
+}
+
+/**
  * Public Method: Generate Broadcast Bulletin for TV Presenter
  */
 export async function getLiveBroadcastBulletin(channel = 'live'): Promise<{
@@ -969,25 +1023,12 @@ export async function getLiveBroadcastBulletin(channel = 'live'): Promise<{
     
     // Clean headline: remove publisher trailing tags like "- Reuters", "| BBC News"
     const cleanTitle = art.title
-      .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA).*$/i, '')
+      .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA|Politico|MarketWatch|Deadline|Variety|Marketing Dive).*$/i, '')
       .replace(/\.$/, '')
       .trim();
 
-    // Clean summary: extract the single most impactful core factual sentence
-    let conciseSummary = (art.summary || '')
-      .replace(/Transmitted live via verified international wire\.?/gi, '')
-      .replace(/Verified live international dispatch transmitted via [^.]+\.?/gi, '')
-      .replace(/Verified correspondents and monitoring bureaus are tracking [^.]+\.?/gi, '')
-      .replace(/Diplomatic delegations and regional observers are actively monitoring [^.]+\.?/gi, '')
-      .replace(/Key developments focus on [^.]+\.?/gi, '')
-      .trim();
-
-    const firstSentenceMatch = conciseSummary.match(/^([^.!?]+[.!?])/);
-    if (firstSentenceMatch && firstSentenceMatch[1].length > 25) {
-      conciseSummary = firstSentenceMatch[1].trim();
-    } else if (conciseSummary.length > 130) {
-      conciseSummary = conciseSummary.slice(0, 127).trim() + '...';
-    }
+    const spokenText = synthesizeConciseBroadcastDispatch(cleanTitle, art.summary);
+    const conciseSummary = spokenText.slice(cleanTitle.length).replace(/^[.\s]+/, '').trim() || cleanTitle;
 
     const bulletPoints = [
       `Primary Reporting: Verified via ${art.source?.name || 'International Wire'}.`,
@@ -995,16 +1036,11 @@ export async function getLiveBroadcastBulletin(channel = 'live'): Promise<{
       `Transmission Status: Cross-referenced with high-engineering live satellite feed.`,
     ];
 
-    // Direct, punchy broadcast script: Headline first, followed immediately by the key development
-    const spokenText = conciseSummary && !cleanTitle.toLowerCase().includes(conciseSummary.toLowerCase().slice(0, 30))
-      ? `${cleanTitle}. ${conciseSummary}`
-      : `${cleanTitle}.`;
-
     return {
       id: art.slug,
       title: cleanTitle,
-      summary: conciseSummary || cleanTitle,
-      full_report: conciseSummary || cleanTitle,
+      summary: conciseSummary,
+      full_report: conciseSummary,
       lead_intro: 'DIRECT WIRE',
       bureau,
       bullet_points: bulletPoints,

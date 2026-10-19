@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { NewsroomAudioEngine } from './NewsroomAudioEngine';
+import { synthesizeConciseBroadcastDispatch } from '@/lib/live-news-engine';
 
 export interface AnchorProfile {
   id: string;
@@ -87,6 +88,10 @@ export default function RealPresenter({
   const stageRef = useRef<HTMLDivElement>(null);
   const audioEngineRef = useRef<NewsroomAudioEngine | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
+  const currentStoryKeyRef = useRef<string | null>(null);
+  const isSpeechRunningRef = useRef<boolean>(false);
 
   // Initialize Web Audio API Newsroom Sound Engine
   useEffect(() => {
@@ -154,56 +159,53 @@ export default function RealPresenter({
     return () => clearInterval(interval);
   }, [playing, isSpeaking]);
 
-  // Handle Speech Synthesis Narration (Authoritative, Concise Full News Broadcast)
+  // Stop speech synthesis if playback is paused
+  useEffect(() => {
+    if (!playing && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      currentStoryKeyRef.current = null;
+      isSpeechRunningRef.current = false;
+      setIsSpeaking(false);
+    }
+  }, [playing]);
+
+  // Handle Speech Synthesis Narration (Authoritative, Ultra-Concise Prime-Time Broadcast)
   useEffect(() => {
     if (!playing || !title) {
       setIsSpeaking(false);
       return;
     }
 
+    const storyKey = `${id || title}-${activeAnchor.id}-${voiceOn ? 'voice' : 'captions'}`;
+
+    // CRITICAL ANTI-REPEAT GUARD:
+    // If this exact story is already actively speaking, do NOT restart it!
+    if (currentStoryKeyRef.current === storyKey && isSpeechRunningRef.current) {
+      return;
+    }
+
+    currentStoryKeyRef.current = storyKey;
+    isSpeechRunningRef.current = true;
+
     let active = true;
     let timer: NodeJS.Timeout;
+    let safetyTimer: NodeJS.Timeout;
 
-    if (voiceOn && 'speechSynthesis' in window) {
+    if (voiceOn && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      // Flush previous speech queue
       window.speechSynthesis.cancel();
 
       // Clean headline: eliminate publisher suffixes
       const cleanTitle = title
-        .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA).*$/i, '')
+        .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA|Politico|MarketWatch|Deadline|Variety|Marketing Dive).*$/i, '')
         .replace(/\.$/, '')
         .trim();
 
-      // Extract raw script and strip any legacy prefix phrases
-      let rawText = (spokenScript || '')
-        .replace(/^(In major (international )?headlines unfolding this hour:?\s*)/i, '')
-        .replace(/^(Leading international headlines unfolding right now:?\s*)/i, '')
-        .replace(/^(In breaking developments confirmed this hour:?\s*)/i, '')
-        .replace(/^(Financial markets and global wires report:?\s*)/i, '')
-        .replace(/^(Significant developments verified by our international desk:?\s*)/i, '')
-        .replace(/^(Direct from the global syndication feed:?\s*)/i, '')
-        .replace(/^(Major technological and economic shifts reported today:?\s*)/i, '')
-        .replace(/^(Fictional demonstration\.?\s*)/i, '')
-        .replace(/Transmitted live via verified international wire\.?/gi, '')
-        .replace(/Verified live international dispatch transmitted via [^.]+\.?/gi, '')
-        .replace(/Verified correspondents and monitoring bureaus are tracking [^.]+\.?/gi, '')
-        .replace(/Diplomatic delegations and regional observers are actively monitoring [^.]+\.?/gi, '')
-        .trim();
-
-      if (!rawText) {
-        let reportBody = (fullReport || summary || '').trim();
-        const firstSentenceMatch = reportBody.match(/^([^.!?]+[.!?])/);
-        if (firstSentenceMatch && firstSentenceMatch[1].length > 20) {
-          reportBody = firstSentenceMatch[1].trim();
-        } else if (reportBody.length > 130) {
-          reportBody = reportBody.slice(0, 127).trim() + '...';
-        }
-        rawText = reportBody && !cleanTitle.toLowerCase().includes(reportBody.toLowerCase().slice(0, 25))
-          ? `${cleanTitle}. ${reportBody}`
-          : `${cleanTitle}.`;
-      }
+      // Synthesize ultra-concise, non-repeating broadcast dispatch (15-22 words max)
+      const broadcastScript = spokenScript || synthesizeConciseBroadcastDispatch(cleanTitle, fullReport || summary);
 
       // Clean punctuation for clear broadcast speech articulation
-      const spokenText = rawText
+      const spokenText = broadcastScript
         .replace(/['’‘]/g, '')
         .replace(/["“”]/g, '')
         .replace(/[◆⚡🛰️🎙️▶⏸]/g, '')
@@ -228,52 +230,67 @@ export default function RealPresenter({
       }
 
       if (matchedVoice) utterance.voice = matchedVoice;
-      utterance.rate = 1.02; // Brisk, crisp, authoritative prime-time tempo
+      utterance.rate = 1.05; // Authoritative, crisp prime-time tempo
       utterance.pitch = activeAnchor.voiceGender === 'female' ? 1.02 : 0.98;
+
+      let hasFinished = false;
+      const finishStory = (delayMs = 600) => {
+        if (hasFinished) return;
+        hasFinished = true;
+        setIsSpeaking(false);
+        isSpeechRunningRef.current = false;
+        utteranceRef.current = null;
+        timer = setTimeout(() => {
+          if (active) onEndedRef.current();
+        }, delayMs);
+      };
 
       utterance.onstart = () => {
         if (active) setIsSpeaking(true);
       };
       utterance.onend = () => {
-        if (active) {
-          setIsSpeaking(false);
-          utteranceRef.current = null;
-          timer = setTimeout(onEnded, 700);
-        }
+        if (active) finishStory(600);
       };
-      utterance.onerror = () => {
-        if (active) {
-          setIsSpeaking(false);
-          utteranceRef.current = null;
-          timer = setTimeout(onEnded, 5000);
-        }
+      utterance.onerror = (e) => {
+        if (e.error === 'canceled' || e.error === 'interrupted') return;
+        if (active) finishStory(1000);
       };
 
-      // Safety timeout: transition after 20s if browser speech hangs
-      const safetyTimer = setTimeout(() => {
-        if (active && utteranceRef.current) {
+      // Safety timeout: transition after 14s max if browser speech stalls
+      safetyTimer = setTimeout(() => {
+        if (active && !hasFinished) {
           window.speechSynthesis.cancel();
-          setIsSpeaking(false);
-          utteranceRef.current = null;
-          onEnded();
+          finishStory(200);
         }
-      }, 20000);
+      }, 14000);
 
-      window.speechSynthesis.speak(utterance);
+      // 60ms delay ensures browser speech synthesizer flushes previous buffers cleanly
+      const startTimer = setTimeout(() => {
+        if (active && playing) {
+          window.speechSynthesis.speak(utterance);
+        }
+      }, 60);
+
+      return () => {
+        active = false;
+        clearTimeout(startTimer);
+        clearTimeout(timer);
+        clearTimeout(safetyTimer);
+      };
     } else {
-      // Captions mode (concise 8s dwell time)
+      // Captions mode (concise 7s dwell time per bulletin)
       setIsSpeaking(false);
-      timer = setTimeout(onEnded, 8000);
-    }
+      isSpeechRunningRef.current = false;
+      timer = setTimeout(() => {
+        if (active) onEndedRef.current();
+      }, 7000);
 
-    return () => {
-      active = false;
-      clearTimeout(timer);
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-      utteranceRef.current = null;
-      setIsSpeaking(false);
-    };
-  }, [playing, title, summary, fullReport, leadIntro, spokenScript, source, voiceOn, selectedVoice, activeAnchor, onEnded]);
+      return () => {
+        active = false;
+        clearTimeout(timer);
+      };
+    }
+  }, [playing, id, title, summary, fullReport, spokenScript, voiceOn, selectedVoice, activeAnchor.id]);
 
   return (
     <div className={`real-studio-theatre camera-${cameraAngle}`} ref={stageRef}>

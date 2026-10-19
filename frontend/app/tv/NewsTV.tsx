@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Studio from './Studio';
 import RealPresenter from './RealPresenter';
 import seedBundle from '@/lib/seed_news.json';
+import { synthesizeConciseBroadcastDispatch } from '@/lib/live-news-engine';
 
 type Item = {
   id: string;
@@ -84,23 +85,15 @@ function getInitialBulletinItems(): Item[] {
       .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA).*$/i, '')
       .replace(/\.$/, '')
       .trim();
-    let conciseSummary = (art.summary || '').trim();
-    const firstSentenceMatch = conciseSummary.match(/^([^.!?]+[.!?])/);
-    if (firstSentenceMatch && firstSentenceMatch[1].length > 25) {
-      conciseSummary = firstSentenceMatch[1].trim();
-    } else if (conciseSummary.length > 130) {
-      conciseSummary = conciseSummary.slice(0, 127).trim() + '...';
-    }
-    const spokenText = conciseSummary && !cleanTitle.toLowerCase().includes(conciseSummary.toLowerCase().slice(0, 25))
-      ? `${cleanTitle}. ${conciseSummary}`
-      : `${cleanTitle}.`;
+    const conciseSummary = (art.summary || '').trim();
+    const spokenText = synthesizeConciseBroadcastDispatch(cleanTitle, conciseSummary);
 
     return {
       id: `initial-bulletin-${idx + 1}-${art.slug || idx}`,
       title: cleanTitle,
       summary: conciseSummary || null,
       full_report: art.summary || cleanTitle,
-      lead_intro: 'Reporting live this hour',
+      lead_intro: 'Direct Wire',
       bureau: bureaus[idx % bureaus.length],
       bullet_points: [cleanTitle, conciseSummary || 'Verified multi-source dispatch.'],
       source: art.source?.name || 'GlobalDesk News Wire',
@@ -132,6 +125,13 @@ export default function NewsTV() {
   const recorder = useRef<MediaRecorder | null>(null);
   const [cycle, setCycle] = useState(0);
   const [, startTransition] = useTransition();
+
+  const handleStoryEnd = useCallback(() => {
+    if (autoAdvance) {
+      setIndex((i) => (i + 1) % Math.max(items.length, 1));
+      setCycle((c) => c + 1);
+    }
+  }, [autoAdvance, items.length]);
 
   const current = items[index];
 
@@ -179,8 +179,12 @@ export default function NewsTV() {
         if (!response.ok) throw new Error();
         const data = await response.json();
         if (active && data.items && data.items.length > 0) {
-          setItems(data.items);
-          setIndex((i) => (data.items.length ? i % data.items.length : 0));
+          setItems((prevItems) => {
+            if (prevItems.length === data.items.length && prevItems[0]?.id === data.items[0]?.id) {
+              return prevItems;
+            }
+            return data.items;
+          });
           setMessage('Broadcasting Verified Live Headlines · Free Public Access Worldwide');
           setPlaying(true);
         }
@@ -424,12 +428,7 @@ export default function NewsTV() {
               playing={playing}
               voiceOn={voiceOn}
               selectedVoice={voice}
-              onEnded={() => {
-                if (autoAdvance) {
-                  setIndex((i) => (i + 1) % Math.max(items.length, 1));
-                  setCycle((c) => c + 1);
-                }
-              }}
+              onEnded={handleStoryEnd}
             />
           ) : (
             <Studio
