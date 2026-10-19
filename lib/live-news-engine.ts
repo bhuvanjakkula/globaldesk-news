@@ -303,6 +303,91 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     country: 'United States',
     defaultImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
   },
+
+  // --- MARKETING & BRANDING GIANTS ---
+  {
+    name: 'Adweek & Marketing Wire',
+    domain: 'adweek.com',
+    region: 'Americas / Marketing & Advertising',
+    url: 'https://news.google.com/rss/search?q=source:Adweek+OR+source:Digiday+OR+source:%22Marketing+Dive%22&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'marketing',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'Forbes CMO & Brand Strategy',
+    domain: 'forbes.com',
+    region: 'Americas / Marketing & Consumer Insights',
+    url: 'https://news.google.com/rss/search?q=source:Forbes+marketing+OR+advertising+OR+branding&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'marketing',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'Marketing Week International',
+    domain: 'marketingweek.com',
+    region: 'Europe / Marketing & Brand Strategy',
+    url: 'https://news.google.com/rss/search?q=source:%22Marketing+Week%22+OR+source:Campaign&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'marketing',
+    country: 'United Kingdom',
+    defaultImage: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80',
+  },
+
+  // --- CULTURE & ENTERTAINMENT WIRE GIANTS ---
+  {
+    name: 'Variety Film & TV',
+    domain: 'variety.com',
+    region: 'Americas / Cinema & Screen Culture',
+    url: 'https://variety.com/feed/',
+    categorySlug: 'movies',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'The Hollywood Reporter',
+    domain: 'hollywoodreporter.com',
+    region: 'Americas / Hollywood & Screen Arts',
+    url: 'https://www.hollywoodreporter.com/feed/',
+    categorySlug: 'hollywood',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'Deadline Hollywood',
+    domain: 'deadline.com',
+    region: 'Americas / Breaking Entertainment',
+    url: 'https://news.google.com/rss/search?q=source:Deadline&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'entertainment',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'Billboard Music Wire',
+    domain: 'billboard.com',
+    region: 'Americas / Music Charts & Sound',
+    url: 'https://www.billboard.com/feed/',
+    categorySlug: 'music',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'Rolling Stone Music & Pop Culture',
+    domain: 'rollingstone.com',
+    region: 'Americas / Rock & Pop Music',
+    url: 'https://news.google.com/rss/search?q=source:%22Rolling+Stone%22+music&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'rock',
+    country: 'United States',
+    defaultImage: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    name: 'BBC Entertainment & Arts',
+    domain: 'bbc.co.uk',
+    region: 'Europe / Arts & Culture',
+    url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',
+    categorySlug: 'arts',
+    country: 'United Kingdom',
+    defaultImage: 'https://images.unsplash.com/photo-1499364615650-ec38552f4f34?auto=format&fit=crop&w=1200&q=80',
+  },
 ];
 
 // Helper: XML entity decoding
@@ -531,6 +616,13 @@ async function fetchAllProminentFeeds(): Promise<NewsArticle[]> {
     if (s.includes('politico')) return 'Politico';
     if (s.includes('sky news')) return 'Sky News';
     if (s.includes('nasa')) return 'NASA';
+    if (s.includes('adweek') || s.includes('adage') || s.includes('marketing dive') || s.includes('digiday')) return 'Adweek & Marketing';
+    if (s.includes('marketing week') || s.includes('campaign')) return 'Marketing Week';
+    if (s.includes('variety')) return 'Variety';
+    if (s.includes('hollywood reporter')) return 'The Hollywood Reporter';
+    if (s.includes('deadline')) return 'Deadline';
+    if (s.includes('billboard')) return 'Billboard';
+    if (s.includes('rolling stone')) return 'Rolling Stone';
     return sourceName || domain || 'Global Wire';
   }
 
@@ -643,9 +735,74 @@ export async function getLiveArticles(options: {
 
   let filtered = [...globalCache.articles];
 
+  const CATEGORY_MAP: Record<string, string[]> = {
+    marketing: ['marketing'],
+    entertainment: ['entertainment', 'movies', 'films', 'hollywood', 'music', 'pop', 'rock', 'arts', 'culture'],
+    movies: ['movies', 'films', 'hollywood', 'entertainment'],
+    films: ['films', 'movies', 'hollywood', 'entertainment'],
+    hollywood: ['hollywood', 'movies', 'films', 'entertainment'],
+    music: ['music', 'pop', 'rock', 'entertainment'],
+    pop: ['pop', 'music', 'rock', 'entertainment'],
+    rock: ['rock', 'music', 'pop', 'entertainment'],
+    arts: ['arts', 'entertainment', 'culture'],
+    technology: ['technology', 'tech', 'science', 'innovation'],
+    business: ['business', 'economy', 'marketing'],
+    economy: ['economy', 'business'],
+    politics: ['politics', 'world'],
+    world: ['world', 'politics'],
+  };
+
+  const CATEGORY_KEYWORDS: Record<string, RegExp> = {
+    marketing: /\b(marketing|advertising|advertisement|ad campaign|ad spend|adtech|brand|branding|adweek|adage|cmo|consumer trend|sponsorship|influencer|pr agency)\b/i,
+    entertainment: /\b(entertainment|movie|film|cinema|actor|actress|hollywood|box office|director|billboard|grammy|oscar|emmy|album|concert|song|music|singer|theatre|culture|streaming|series)\b/i,
+    movies: /\b(movie|film|cinema|box office|theatrical|screenplay|director|trailer|actor|actress|hollywood)\b/i,
+    films: /\b(film|filmmaking|cinema|festival|sundance|cannes|documentary|director|indie film)\b/i,
+    hollywood: /\b(hollywood|studio|disney|warner|paramount|universal|sony pictures|oscars|academy award|box office)\b/i,
+    music: /\b(music|song|album|single|concert|tour|billboard|grammy|singer|musician|band|track|spotify|apple music)\b/i,
+    pop: /\b(pop|pop music|pop star|hit single|chart|taylor swift|beyonce|grammy|songwriter|pop culture)\b/i,
+    rock: /\b(rock|band|guitar|rock and roll|heavy metal|punk|tour|metallica|rolling stone|festival)\b/i,
+    arts: /\b(art|arts|museum|exhibition|gallery|artist|sculpture|painting|fine art|curator|biennale)\b/i,
+    business: /\b(business|corporate|company|executive|ceo|revenue|profit|merger|acquisition|quarterly|investor|wall street)\b/i,
+    economy: /\b(economy|inflation|gdp|interest rate|federal reserve|central bank|jobs|labor|recession|trade)\b/i,
+    technology: /\b(technology|tech|ai|artificial intelligence|software|hardware|semiconductor|cyber|robotics|space|quantum)\b/i,
+    world: /\b(world|international|foreign|diplomacy|global|treaty|united nations|un|europe|asia|africa|middle east|americas)\b/i,
+    politics: /\b(politics|government|election|senate|parliament|congress|president|prime minister|legislation|vote)\b/i,
+  };
+
   if (options.category && options.category !== 'all') {
     const target = options.category.toLowerCase();
-    filtered = filtered.filter((a) => a.category?.slug?.toLowerCase() === target);
+    const allowedSlugs = CATEGORY_MAP[target] || [target];
+    const kw = CATEGORY_KEYWORDS[target];
+
+    filtered = filtered.filter((a) => {
+      const slug = a.category?.slug?.toLowerCase();
+      if (slug && allowedSlugs.includes(slug)) return true;
+      if (kw && (kw.test(a.title) || (a.summary && kw.test(a.summary)))) return true;
+      return false;
+    });
+
+    // High-Tech Guarantee: Ensure no segment ever renders with 0 entries
+    if (filtered.length < 8) {
+      const parentSlug = target in CATEGORY_MAP ? CATEGORY_MAP[target][0] : 'world';
+      const topicMeta = TOPICS.find((t) => t.slug === target) || {
+        slug: target,
+        name: target.charAt(0).toUpperCase() + target.slice(1),
+        description: 'GlobalDesk specialized intelligence dispatch.',
+      };
+      const fallbackPool = globalCache.articles.filter((a) => {
+        const slug = a.category?.slug?.toLowerCase();
+        return slug === parentSlug || (kw && (kw.test(a.title) || (a.summary && kw.test(a.summary))));
+      });
+      for (const item of fallbackPool) {
+        if (!filtered.some((f) => f.slug === item.slug)) {
+          filtered.push({
+            ...item,
+            category: topicMeta,
+          });
+          if (filtered.length >= 24) break;
+        }
+      }
+    }
   }
 
   if (options.source && options.source !== 'all') {
