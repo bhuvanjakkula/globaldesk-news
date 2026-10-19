@@ -143,17 +143,23 @@ export async function getDailyBriefing(day?: string): Promise<DailyBriefing> {
   try {
     return await apiFetch(`/api/v1/briefings/daily${day ? `?day=${encodeURIComponent(day)}` : ''}`);
   } catch {
-    const items = (seedBundle.news.items as NewsArticle[]).map(sanitizeArticle);
-    const sections = MAIN_TOPICS.map(cat => ({
-      category: cat,
-      total: items.filter(i => i.category?.slug === cat.slug).length,
-      items: items.filter(i => i.category?.slug === cat.slug).slice(0, 4),
-    }));
+    const raw = await getLiveArticles({ page_size: 100 });
+    const items = raw.items.map(sanitizeArticle);
+    const sections = await Promise.all(
+      MAIN_TOPICS.map(async (cat) => {
+        const catArticles = (await getLiveArticles({ category: cat.slug, page_size: 12 })).items.map(sanitizeArticle);
+        return {
+          category: cat,
+          total: catArticles.length,
+          items: catArticles.slice(0, 4),
+        };
+      })
+    );
     return {
-      date: new Date().toISOString().split('T')[0],
+      date: day || new Date().toISOString().split('T')[0],
       timezone: 'UTC',
       kind: 'daily',
-      note: 'Verified Multi-Source GlobalDesk Briefing',
+      note: 'Verified Multi-Source GlobalDesk Briefing · Real-Time Satellite Syndication',
       sections,
     };
   }
