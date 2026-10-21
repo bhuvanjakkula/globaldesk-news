@@ -52,14 +52,14 @@ export default function LiveUpdates() {
             }
             setState('Live reports updated to front page');
             setTimeout(() => {
-              if (!stopped) setState('Live newsroom connected · 15s live sync active');
+              if (!stopped) setState('Live newsroom connected · Auto-updates every 2 minutes · Strictly Today News Only');
             }, 4000);
           } else {
             setState('Updates ready · finish editing to load');
           }
         } else {
           revision = data.revision;
-          setState('Live newsroom connected · 15s live sync active');
+          setState('Live newsroom connected · Auto-updates every 2 minutes · Strictly Today News Only');
         }
       } catch {
         if (!stopped) {
@@ -102,7 +102,7 @@ export default function LiveUpdates() {
     <div className="live-update-bar">
       <div className="container">
         <span>{paused ? 'Auto updates paused' : state}</span>
-        <small>Connected feeds refresh every {interval}s after each fetch · source publication times vary</small>
+        <small>Prominent international wires (Reuters, AP, Bloomberg, WSJ, NYT, BBC, CNN, CNBC, FT, Forbes, Fox News, ABC News, NASA) · Auto-updating every 2 minutes · Strictly Today Only</small>
         <button onClick={() => setPaused((v) => !v)} aria-pressed={paused}>
           {paused ? 'Resume updates' : 'Pause updates'}
         </button>

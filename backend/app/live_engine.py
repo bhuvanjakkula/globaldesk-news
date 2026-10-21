@@ -21,7 +21,7 @@ import re
 import time
 import urllib.request
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 
 from sqlalchemy import select
@@ -95,7 +95,7 @@ FEEDS = [
         'name': 'The Wall Street Journal',
         'domain': 'wsj.com',
         'region': 'Americas / Finance',
-        'url': 'https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml',
+        'url': 'https://news.google.com/rss/search?q=source:%22The+Wall+Street+Journal%22+business+OR+finance+when:2d&hl=en-US&gl=US&ceid=US:en',
         'category_slug': 'business',
         'country': 'United States',
     },
@@ -103,7 +103,7 @@ FEEDS = [
         'name': 'The Wall Street Journal',
         'domain': 'wsj.com',
         'region': 'Global / Affairs',
-        'url': 'https://feeds.a.dj.com/rss/RSSWorldNews.xml',
+        'url': 'https://news.google.com/rss/search?q=source:WSJ+when:2d&hl=en-US&gl=US&ceid=US:en',
         'category_slug': 'world',
         'country': 'Global',
     },
@@ -753,6 +753,14 @@ def process_feed(db, feed_conf: dict, items=None) -> int:
         if pub_el is None:
             pub_el = it.find('{http://www.w3.org/2005/Atom}updated')
         published_at = parse_pubdate(pub_el.text if pub_el is not None else None)
+
+        # STRICT TEMPORAL GUARD: Strictly TODAY news only (moves automatically with calendar time)
+        now = datetime.now(timezone.utc)
+        today_midnight = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+        min_valid = today_midnight
+        max_valid = now + timedelta(minutes=20)
+        if published_at < min_valid or published_at > max_valid:
+            continue
 
         # Extract EXACT real image from this specific article
         image_url = extract_image_url(it)

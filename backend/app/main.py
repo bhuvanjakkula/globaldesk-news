@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timezone, timedelta
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, or_, select
@@ -114,8 +114,16 @@ def news(
     if country: filters.append(Article.country.ilike(country))
     if source: filters.append(or_(Source.domain.ilike(source), Source.name.ilike(source)))
     if language: filters.append(Article.language.ilike(language))
-    if date_from: filters.append(Article.published_at >= datetime.combine(date_from, time.min, timezone.utc))
-    if date_to: filters.append(Article.published_at <= datetime.combine(date_to, time.max, timezone.utc))
+    now = datetime.now(timezone.utc)
+    today_midnight = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    if date_from:
+        filters.append(Article.published_at >= datetime.combine(date_from, time.min, timezone.utc))
+    else:
+        filters.append(Article.published_at >= today_midnight)
+    if date_to:
+        filters.append(Article.published_at <= datetime.combine(date_to, time.max, timezone.utc))
+    else:
+        filters.append(Article.published_at <= now + timedelta(minutes=20))
     if q:
         term = f'%{q}%'
         filters.append(or_(Article.title.ilike(term), Article.summary.ilike(term), Source.name.ilike(term)))

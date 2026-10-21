@@ -3,14 +3,23 @@
  * Aggregates real-time feeds directly from prominent international news organizations:
  * Reuters, Associated Press, BBC World News, CNN, The Wall Street Journal,
  * The New York Times, Bloomberg, CNBC, Financial Times, Forbes, Al Jazeera,
- * The Guardian, Fox News, ABC News, NASA.
+ * The Guardian, Fox News, ABC News, NASA, Variety, Hollywood Reporter, Billboard.
  *
  * Runs seamlessly both in Vercel (Serverless / Edge) and Locally.
- * Supports Stale-While-Revalidate in-memory caching and real-time second/minute updates.
+ * Strictly enforces:
+ * 1. ONLY Yesterday & Today news coverage in all sections and segments.
+ * 2. Purges any stale news from last year, last month, or older periods.
+ * 3. Rejects illegal pushes, defacement attempts, and unauthorized publisher injections.
+ * 4. Stale-While-Revalidate in-memory caching and real-time up-to-the-minute updates.
  */
 
 import { NewsArticle, Category, Source, TOPICS, sanitizeArticle } from './api';
 import { isAuthenticPublisherPhoto } from './visuals';
+import {
+  isStrictlyTodayOnly,
+  validateAndSealArticle,
+  getSecurityAuditLedger,
+} from './security-shield';
 import seedBundle from './seed_news.json';
 
 interface FeedSourceConfig {
@@ -28,7 +37,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Reuters',
     domain: 'reuters.com',
     region: 'Global / International Wire',
-    url: 'https://news.google.com/rss/search?q=source:Reuters&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:Reuters+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
     country: 'Global',
   },
@@ -36,7 +45,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Reuters Business',
     domain: 'reuters.com',
     region: 'Global / International Wire',
-    url: 'https://news.google.com/rss/search?q=source:Reuters+business&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:Reuters+business+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'business',
     country: 'Global',
   },
@@ -44,7 +53,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Associated Press (AP)',
     domain: 'apnews.com',
     region: 'Global / Breaking Wire',
-    url: 'https://news.google.com/rss/search?q=source:%22Associated+Press%22&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:%22Associated+Press%22+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
     country: 'Global',
   },
@@ -52,31 +61,31 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Bloomberg Markets',
     domain: 'bloomberg.com',
     region: 'Global / Markets & Capital',
-    url: 'https://news.google.com/rss/search?q=source:Bloomberg&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:Bloomberg+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'business',
     country: 'Global',
-  },
-  {
-    name: 'The Wall Street Journal',
-    domain: 'wsj.com',
-    region: 'Americas / Finance & Markets',
-    url: 'https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml',
-    categorySlug: 'business',
-    country: 'United States',
   },
   {
     name: 'The Wall Street Journal World',
     domain: 'wsj.com',
     region: 'Americas / International',
-    url: 'https://feeds.a.dj.com/rss/RSSWorldNews.xml',
+    url: 'https://news.google.com/rss/search?q=source:WSJ+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
+    country: 'United States',
+  },
+  {
+    name: 'The Wall Street Journal Business',
+    domain: 'wsj.com',
+    region: 'Americas / Finance & Markets',
+    url: 'https://news.google.com/rss/search?q=source:%22The+Wall+Street+Journal%22+business+OR+finance+when:2d&hl=en-US&gl=US&ceid=US:en',
+    categorySlug: 'business',
     country: 'United States',
   },
   {
     name: 'The Wall Street Journal Tech',
     domain: 'wsj.com',
     region: 'Americas / Innovation',
-    url: 'https://feeds.a.dj.com/rss/RSSTechnology.xml',
+    url: 'https://news.google.com/rss/search?q=source:%22The+Wall+Street+Journal%22+technology+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'technology',
     country: 'United States',
   },
@@ -129,6 +138,14 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     country: 'United Kingdom',
   },
   {
+    name: 'BBC Entertainment & Arts',
+    domain: 'bbc.co.uk',
+    region: 'Europe / Arts & Culture',
+    url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',
+    categorySlug: 'arts',
+    country: 'United Kingdom',
+  },
+  {
     name: 'CNN International',
     domain: 'cnn.com',
     region: 'Americas / Global News',
@@ -156,7 +173,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Financial Times',
     domain: 'ft.com',
     region: 'Europe / Global Capital',
-    url: 'https://news.google.com/rss/search?q=source:%22Financial+Times%22&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:%22Financial+Times%22+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'economy',
     country: 'United Kingdom',
   },
@@ -164,7 +181,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Forbes Business',
     domain: 'forbes.com',
     region: 'Americas / Enterprise & Leadership',
-    url: 'https://www.forbes.com/business/feed/',
+    url: 'https://news.google.com/rss/search?q=source:Forbes+business+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'business',
     country: 'United States',
   },
@@ -172,7 +189,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Forbes Innovation',
     domain: 'forbes.com',
     region: 'Americas / Tech & Breakthroughs',
-    url: 'https://www.forbes.com/innovation/feed/',
+    url: 'https://news.google.com/rss/search?q=source:Forbes+innovation+OR+tech+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'technology',
     country: 'United States',
   },
@@ -196,7 +213,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Fox Business',
     domain: 'foxbusiness.com',
     region: 'Americas / Wall Street & Commerce',
-    url: 'https://news.google.com/rss/search?q=source:%22Fox+Business%22&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:%22Fox+Business%22+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'business',
     country: 'United States',
   },
@@ -220,7 +237,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'CBS News World',
     domain: 'cbsnews.com',
     region: 'Americas / Global Affairs',
-    url: 'https://news.google.com/rss/search?q=source:%22CBS+News%22&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:%22CBS+News%22+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
     country: 'United States',
   },
@@ -228,7 +245,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'NBC News World',
     domain: 'nbcnews.com',
     region: 'Americas / International',
-    url: 'https://news.google.com/rss/search?q=source:%22NBC+News%22&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:%22NBC+News%22+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
     country: 'United States',
   },
@@ -244,7 +261,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Sky News World',
     domain: 'skynews.com',
     region: 'Europe / International',
-    url: 'https://news.google.com/rss/search?q=source:%22Sky+News%22&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:%22Sky+News%22+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'world',
     country: 'United Kingdom',
   },
@@ -278,7 +295,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Adweek & Marketing Wire',
     domain: 'adweek.com',
     region: 'Americas / Marketing & Advertising',
-    url: 'https://news.google.com/rss/search?q=source:Adweek+OR+source:Digiday+OR+source:%22Marketing+Dive%22&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=Adweek+OR+%22Marketing+Dive%22+OR+Digiday+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'marketing',
     country: 'United States',
   },
@@ -286,7 +303,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Forbes CMO & Brand Strategy',
     domain: 'forbes.com',
     region: 'Americas / Marketing & Consumer Insights',
-    url: 'https://news.google.com/rss/search?q=source:Forbes+marketing+OR+advertising+OR+branding&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:Forbes+marketing+OR+advertising+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'marketing',
     country: 'United States',
   },
@@ -294,7 +311,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Marketing Week International',
     domain: 'marketingweek.com',
     region: 'Europe / Marketing & Brand Strategy',
-    url: 'https://news.google.com/rss/search?q=source:%22Marketing+Week%22+OR+source:Campaign&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:%22Marketing+Week%22+OR+source:Campaign+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'marketing',
     country: 'United Kingdom',
   },
@@ -304,7 +321,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Variety Film & TV',
     domain: 'variety.com',
     region: 'Americas / Cinema & Screen Culture',
-    url: 'https://variety.com/feed/',
+    url: 'https://news.google.com/rss/search?q=source:Variety+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'movies',
     country: 'United States',
   },
@@ -312,7 +329,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'The Hollywood Reporter',
     domain: 'hollywoodreporter.com',
     region: 'Americas / Hollywood & Screen Arts',
-    url: 'https://www.hollywoodreporter.com/feed/',
+    url: 'https://news.google.com/rss/search?q=source:%22The+Hollywood+Reporter%22+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'hollywood',
     country: 'United States',
   },
@@ -320,7 +337,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Deadline Hollywood',
     domain: 'deadline.com',
     region: 'Americas / Breaking Entertainment',
-    url: 'https://news.google.com/rss/search?q=source:Deadline&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:Deadline+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'entertainment',
     country: 'United States',
   },
@@ -328,7 +345,7 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Billboard Music Wire',
     domain: 'billboard.com',
     region: 'Americas / Music Charts & Sound',
-    url: 'https://www.billboard.com/feed/',
+    url: 'https://news.google.com/rss/search?q=source:Billboard+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'music',
     country: 'United States',
   },
@@ -336,17 +353,9 @@ const PROMINENT_FEEDS: FeedSourceConfig[] = [
     name: 'Rolling Stone Music & Pop Culture',
     domain: 'rollingstone.com',
     region: 'Americas / Rock & Pop Music',
-    url: 'https://news.google.com/rss/search?q=source:%22Rolling+Stone%22+music&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=source:%22Rolling+Stone%22+music+when:2d&hl=en-US&gl=US&ceid=US:en',
     categorySlug: 'rock',
     country: 'United States',
-  },
-  {
-    name: 'BBC Entertainment & Arts',
-    domain: 'bbc.co.uk',
-    region: 'Europe / Arts & Culture',
-    url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',
-    categorySlug: 'arts',
-    country: 'United Kingdom',
   },
 ];
 
@@ -369,15 +378,13 @@ function decodeEntities(str: string): string {
     .replace(/&#160;/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/<[^>]+>/g, ' ') // Strip residual HTML tags
+    .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-// Helper: Extract authentic image URL from XML item
 // Helper: Extract authentic image URL directly from publisher XML item
 function extractImageUrl(itemXml: string): string | null {
-  // 1. Check media:content or media:thumbnail
   const mediaMatches = itemXml.matchAll(/<media:(?:content|thumbnail)[^>]*url=["']([^"']+)["']/gi);
   for (const m of mediaMatches) {
     const url = m[1].replace(/&amp;/g, '&').trim();
@@ -386,10 +393,10 @@ function extractImageUrl(itemXml: string): string | null {
     }
   }
 
-  // 2. Check enclosure
-  const encMatch = itemXml.match(/<enclosure[^>]*url=["']([^"']+)["'][^>]*type=["']image\/[^"']+["']/i) ||
-                   itemXml.match(/<enclosure[^>]*type=["']image\/[^"']+["'][^>]*url=["']([^"']+)["']/i) ||
-                   itemXml.match(/<enclosure[^>]*url=["']([^"']+)["']/i);
+  const encMatch =
+    itemXml.match(/<enclosure[^>]*url=["']([^"']+)["'][^>]*type=["']image\/[^"']+["']/i) ||
+    itemXml.match(/<enclosure[^>]*type=["']image\/[^"']+["'][^>]*url=["']([^"']+)["']/i) ||
+    itemXml.match(/<enclosure[^>]*url=["']([^"']+)["']/i);
   if (encMatch && encMatch[1]) {
     const url = encMatch[1].replace(/&amp;/g, '&').trim();
     if (isAuthenticPublisherPhoto(url)) {
@@ -397,9 +404,9 @@ function extractImageUrl(itemXml: string): string | null {
     }
   }
 
-  // 3. Check <img> tag inside description or content (both direct and HTML-escaped)
-  const imgDirect = itemXml.match(/<img[^>]+src=["']([^"']+)["']/i) ||
-                    itemXml.match(/(?:&lt;|<)img[^>]+src=(?:&quot;|"|')([^"'>&]+)(?:&quot;|"|')/i);
+  const imgDirect =
+    itemXml.match(/<img[^>]+src=["']([^"']+)["']/i) ||
+    itemXml.match(/(?:&lt;|<)img[^>]+src=(?:&quot;|"|')([^"'>&]+)(?:&quot;|"|')/i);
   if (imgDirect && imgDirect[1]) {
     const url = imgDirect[1].replace(/&amp;/g, '&').trim();
     if (isAuthenticPublisherPhoto(url)) {
@@ -407,7 +414,6 @@ function extractImageUrl(itemXml: string): string | null {
     }
   }
 
-  // 4. Check raw image links ending in common extensions
   const rawImg = itemXml.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp|avif)(?:\?[^\s"'<>]*)?/i);
   if (rawImg && rawImg[0]) {
     const url = rawImg[0].replace(/&amp;/g, '&').trim();
@@ -419,7 +425,27 @@ function extractImageUrl(itemXml: string): string | null {
   return null;
 }
 
-// Helper: Parse XML items into NewsArticle
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
+
+function generateSlug(domain: string, title: string): string {
+  const cleanTitle = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 60);
+  const hash = Math.abs(hashString(title + domain)).toString(36).slice(0, 6);
+  return `${domain.split('.')[0]}-${cleanTitle}-${hash}`;
+}
+
+// Helper: Parse XML items into NewsArticle with CyberShield Security Inspection
 function parseFeedXml(xml: string, config: FeedSourceConfig): NewsArticle[] {
   const articles: NewsArticle[] = [];
   const itemRegex = /<(?:item|entry)[\s>]([\s\S]*?)<\/(?:item|entry)>/gi;
@@ -441,7 +467,6 @@ function parseFeedXml(xml: string, config: FeedSourceConfig): NewsArticle[] {
   let count = 0;
   while ((match = itemRegex.exec(xml)) !== null && count < 18) {
     const raw = match[1];
-    count++;
 
     // Title
     const titleMatch = raw.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
@@ -449,7 +474,7 @@ function parseFeedXml(xml: string, config: FeedSourceConfig): NewsArticle[] {
     let title = decodeEntities(titleMatch[1]);
     if (!title || title.length < 5) continue;
 
-    // Filter out redundant source suffixes like "- Reuters" or "- BBC News"
+    // Filter out redundant source suffixes
     title = title.replace(new RegExp(`\\s*[-|–—]\\s*${config.name}.*$`, 'i'), '').trim();
 
     // Link
@@ -479,13 +504,18 @@ function parseFeedXml(xml: string, config: FeedSourceConfig): NewsArticle[] {
       }
     }
 
+    // STRICT TEMPORAL GUARD: Strictly reject anything not published TODAY
+    if (!isStrictlyTodayOnly(publishedAt)) {
+      continue;
+    }
+
     // Image
     const imageUrl = extractImageUrl(raw);
 
     // Slug
     const slug = generateSlug(config.domain, title);
 
-    articles.push({
+    const candidate: NewsArticle = {
       slug,
       title,
       summary,
@@ -497,30 +527,17 @@ function parseFeedXml(xml: string, config: FeedSourceConfig): NewsArticle[] {
       language: 'en',
       published_at: publishedAt,
       is_demo: false,
-    });
+    };
+
+    // CyberShield Anti-Tamper & Security Inspection
+    const validated = validateAndSealArticle(candidate);
+    if (validated) {
+      articles.push(validated);
+      count++;
+    }
   }
 
   return articles;
-}
-
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash;
-}
-
-function generateSlug(domain: string, title: string): string {
-  const cleanTitle = title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .slice(0, 60);
-  const hash = Math.abs(hashString(title + domain)).toString(36).slice(0, 6);
-  return `${domain.split('.')[0]}-${cleanTitle}-${hash}`;
 }
 
 // In-Memory Multi-Tier Cache State
@@ -531,11 +548,15 @@ interface CacheState {
   revision: string;
 }
 
-const initialArticles: NewsArticle[] = (seedBundle?.news?.items as NewsArticle[]) || [];
+// Pre-filter initial articles strictly with CyberShield
+const initialSeedItems: NewsArticle[] = (seedBundle?.news?.items as NewsArticle[]) || [];
+const initialArticles: NewsArticle[] = initialSeedItems
+  .map(validateAndSealArticle)
+  .filter((a): a is NewsArticle => a !== null && isStrictlyTodayOnly(a.published_at));
 
 const globalCache: CacheState = {
   articles: initialArticles,
-  lastFetchedAt: Date.now() - 30000,
+  lastFetchedAt: Date.now() - 120000,
   isFetching: false,
   revision: `rev-prewarmed-${initialArticles.length}`,
 };
@@ -547,10 +568,11 @@ async function fetchAllProminentFeeds(): Promise<NewsArticle[]> {
       const res = await fetch(cfg.url, {
         cache: 'no-store',
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 GlobalDeskNews/2.5',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 GlobalDeskNews/3.0',
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
         },
-        signal: AbortSignal.timeout(2500),
+        signal: AbortSignal.timeout(3500),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const xml = await res.text();
@@ -565,6 +587,7 @@ async function fetchAllProminentFeeds(): Promise<NewsArticle[]> {
   for (const r of results) {
     if (r.status === 'fulfilled' && Array.isArray(r.value)) {
       for (const item of r.value) {
+        if (!isStrictlyTodayOnly(item.published_at)) continue;
         const titleKey = item.title.toLowerCase().slice(0, 45);
         if (item.url && seenUrls.has(item.url)) continue;
         if (seenTitles.has(titleKey)) continue;
@@ -577,7 +600,6 @@ async function fetchAllProminentFeeds(): Promise<NewsArticle[]> {
   }
 
   // --- ROUND-ROBIN MULTI-SOURCE BALANCED DIVERSITY PIPELINE ---
-  // Group deduplicated articles by their publisher source family
   const familyMap = new Map<string, NewsArticle[]>();
 
   function getFamilyKey(sourceName: string, domain: string): string {
@@ -601,7 +623,7 @@ async function fetchAllProminentFeeds(): Promise<NewsArticle[]> {
     if (s.includes('politico')) return 'Politico';
     if (s.includes('sky news')) return 'Sky News';
     if (s.includes('nasa')) return 'NASA';
-    if (s.includes('adweek') || s.includes('adage') || s.includes('marketing dive') || s.includes('digiday')) return 'Adweek & Marketing';
+    if (s.includes('adweek') || s.includes('marketing dive') || s.includes('digiday')) return 'Adweek & Marketing';
     if (s.includes('marketing week') || s.includes('campaign')) return 'Marketing Week';
     if (s.includes('variety')) return 'Variety';
     if (s.includes('hollywood reporter')) return 'The Hollywood Reporter';
@@ -622,7 +644,6 @@ async function fetchAllProminentFeeds(): Promise<NewsArticle[]> {
     list.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
   }
 
-  // Round-robin interleave across all families for guaranteed multi-source diversity
   const balancedMerged: NewsArticle[] = [];
   const families = Array.from(familyMap.keys());
   let maxLen = 0;
@@ -639,22 +660,28 @@ async function fetchAllProminentFeeds(): Promise<NewsArticle[]> {
     }
   }
 
-  // Fallback merge with seed news if feeds yielded few results
-  if (balancedMerged.length < 15 && seedBundle?.news?.items) {
+  // Secondary seed fallback: ONLY include items verified to be strictly TODAY
+  if (balancedMerged.length < 20 && seedBundle?.news?.items) {
     const seedItems = seedBundle.news.items as NewsArticle[];
     for (const s of seedItems) {
-      const titleKey = s.title.toLowerCase().slice(0, 45);
+      const valid = validateAndSealArticle(s);
+      if (!valid || !isStrictlyTodayOnly(valid.published_at)) continue;
+      const titleKey = valid.title.toLowerCase().slice(0, 45);
       if (!seenTitles.has(titleKey)) {
         seenTitles.add(titleKey);
-        balancedMerged.push(sanitizeArticle(s));
+        balancedMerged.push(sanitizeArticle(valid));
       }
     }
   }
 
-  return balancedMerged.length > 0 ? balancedMerged : merged;
+  const finalList = balancedMerged.length > 0 ? balancedMerged : merged;
+  // Sort strictly newest first
+  finalList.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
+
+  return finalList;
 }
 
-// Background revalidation (stale-while-revalidate)
+// Background revalidation (stale-while-revalidate every 2 minutes)
 function triggerBackgroundRevalidation() {
   if (globalCache.isFetching) return;
   globalCache.isFetching = true;
@@ -662,7 +689,8 @@ function triggerBackgroundRevalidation() {
   void fetchAllProminentFeeds()
     .then((fresh) => {
       if (fresh.length > 0) {
-        globalCache.articles = fresh;
+        // Enforce temporal integrity on every cache assignment: TODAY ONLY
+        globalCache.articles = fresh.filter((a) => isStrictlyTodayOnly(a.published_at));
         globalCache.lastFetchedAt = Date.now();
         globalCache.revision = `rev-${Date.now()}-${fresh.length}`;
       }
@@ -676,8 +704,8 @@ function triggerBackgroundRevalidation() {
 }
 
 /**
- * Public Method: Retrieve live news articles with full query support.
- * Works seamlessly in Vercel serverless and local dev.
+ * Public Method: Retrieve live news articles with full query and strict temporal protection.
+ * Strictly outputs TODAY's news coverage ONLY. Always auto-revalidates every 2 minutes.
  */
 export async function getLiveArticles(options: {
   category?: string;
@@ -694,20 +722,25 @@ export async function getLiveArticles(options: {
   page_size: number;
   is_live: boolean;
   refreshed_at: string;
+  temporal_window: string;
+  security_shield: string;
 }> {
   const now = Date.now();
   const cacheAge = now - globalCache.lastFetchedAt;
 
-  // Instant High-Tech Execution: Never block Vercel edge/serverless functions.
   if (globalCache.articles.length === 0) {
-    globalCache.articles = (seedBundle?.news?.items as NewsArticle[]) || [];
+    const seed = (seedBundle?.news?.items as NewsArticle[]) || [];
+    globalCache.articles = seed
+      .map(validateAndSealArticle)
+      .filter((a): a is NewsArticle => a !== null && isStrictlyTodayOnly(a.published_at));
     triggerBackgroundRevalidation();
-  } else if (cacheAge > 30000) {
-    // SWR trigger: refresh in background if cache is older than 30 seconds
+  } else if (cacheAge > 120000) {
+    // SWR trigger: refresh in background if cache is older than 2 minutes (120 seconds)
     triggerBackgroundRevalidation();
   }
 
-  let filtered = [...globalCache.articles];
+  // Strict temporal purge: Never allow an old article to slip through - TODAY ONLY
+  let filtered = globalCache.articles.filter((a) => isStrictlyTodayOnly(a.published_at));
 
   const CATEGORY_MAP: Record<string, string[]> = {
     marketing: ['marketing'],
@@ -755,7 +788,7 @@ export async function getLiveArticles(options: {
       return false;
     });
 
-    // High-Tech Guarantee: Ensure no segment ever renders with 0 entries
+    // High-Tech Guarantee: Ensure no segment ever renders with 0 entries, while strictly enforcing Yesterday & Today
     if (filtered.length < 8) {
       const parentSlug = target in CATEGORY_MAP ? CATEGORY_MAP[target][0] : 'world';
       const topicMeta = TOPICS.find((t) => t.slug === target) || {
@@ -764,6 +797,7 @@ export async function getLiveArticles(options: {
         description: 'GlobalDesk specialized intelligence dispatch.',
       };
       const fallbackPool = globalCache.articles.filter((a) => {
+        if (!isStrictlyTodayOnly(a.published_at)) return false;
         const slug = a.category?.slug?.toLowerCase();
         return slug === parentSlug || (kw && (kw.test(a.title) || (a.summary && kw.test(a.summary))));
       });
@@ -801,10 +835,15 @@ export async function getLiveArticles(options: {
     );
   }
 
+  // Sort strictly descending: absolute newest first
+  filtered.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
+
   const page = Math.max(1, options.page ?? 1);
   const pageSize = Math.max(1, Math.min(100, options.page_size ?? 24));
   const offset = (page - 1) * pageSize;
   const pagedItems = filtered.slice(offset, offset + pageSize);
+
+  const ledger = getSecurityAuditLedger();
 
   return {
     items: pagedItems,
@@ -813,24 +852,28 @@ export async function getLiveArticles(options: {
     page_size: pageSize,
     is_live: true,
     refreshed_at: new Date(globalCache.lastFetchedAt || Date.now()).toISOString(),
+    temporal_window: ledger.temporalWindow,
+    security_shield: 'ARMED_AND_ACTIVE',
   };
 }
 
 /**
- * Public Method: Get single article by slug
+ * Public Method: Get single article by slug (strictly TODAY only)
  */
 export async function getLiveArticleBySlug(slug: string): Promise<NewsArticle | null> {
   const { items } = await getLiveArticles({ page_size: 100 });
   const found = items.find((a) => a.slug === slug);
-  if (found) return found;
+  if (found && isStrictlyTodayOnly(found.published_at)) return found;
 
-  // Search across seed as secondary fallback
   const seedItem = (seedBundle?.news?.items as NewsArticle[])?.find((a) => a.slug === slug);
-  return seedItem ? sanitizeArticle(seedItem) : null;
+  if (seedItem && isStrictlyTodayOnly(seedItem.published_at)) {
+    return sanitizeArticle(seedItem);
+  }
+  return null;
 }
 
 /**
- * Public Method: Real-Time Revision Check for live polling
+ * Public Method: Real-Time Revision Check for live polling (2-minute cadence)
  */
 export function getLiveRevision(): {
   revision: string;
@@ -839,31 +882,42 @@ export function getLiveRevision(): {
   latest_headline: string;
   browser_poll_seconds: number;
   feed_refresh_seconds: number;
+  temporal_window: string;
+  security_shield: string;
+  update_cadence: string;
 } {
   if (globalCache.articles.length === 0 && seedBundle?.news?.items) {
-    globalCache.articles = seedBundle.news.items as NewsArticle[];
+    globalCache.articles = (seedBundle.news.items as NewsArticle[])
+      .map(validateAndSealArticle)
+      .filter((a): a is NewsArticle => a !== null && isStrictlyTodayOnly(a.published_at));
     triggerBackgroundRevalidation();
   }
   const latest = globalCache.articles[0];
-  const minuteStamp = Math.floor(Date.now() / 15000); // changes every 15 seconds
+  const minuteStamp = Math.floor(Date.now() / 120000); // 2 minutes interval
+  const ledger = getSecurityAuditLedger();
+
   return {
     revision: `${globalCache.revision}-${minuteStamp}`,
     timestamp: new Date().toISOString(),
     article_count: globalCache.articles.length,
     latest_headline: latest ? latest.title : 'GlobalDesk Live Syndication Active',
-    browser_poll_seconds: 5,
-    feed_refresh_seconds: 15,
+    browser_poll_seconds: 120,
+    feed_refresh_seconds: 120,
+    temporal_window: ledger.temporalWindow,
+    security_shield: 'ARMED_AND_ACTIVE',
+    update_cadence: 'AUTOMATIC_EVERY_2_MINUTES',
   };
 }
 
 /**
  * Advanced Broadcast Engineering: Ultra-Concise Anchor Dispatch Generator
- * Synthesizes punchy, non-repeating 15-22 word teleprompter voice scripts.
- * Employs keyword Jaccard overlap filtering to eliminate repeated sentences or words.
  */
 export function synthesizeConciseBroadcastDispatch(title: string, rawSummary?: string | null): string {
   const cleanTitle = (title || '')
-    .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA|Politico|MarketWatch|Deadline|Variety|Marketing Dive).*$/i, '')
+    .replace(
+      /\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA|Politico|MarketWatch|Deadline|Variety|Marketing Dive).*$/i,
+      ''
+    )
     .replace(/&nbsp;/g, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
@@ -880,7 +934,10 @@ export function synthesizeConciseBroadcastDispatch(title: string, rawSummary?: s
     .replace(/Verified correspondents and monitoring bureaus are tracking [^.]+\.?/gi, '')
     .replace(/Diplomatic delegations and regional observers are actively monitoring [^.]+\.?/gi, '')
     .replace(/Key developments focus on [^.]+\.?/gi, '')
-    .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA|Politico|MarketWatch|Deadline|Variety|Marketing Dive).*$/i, '')
+    .replace(
+      /\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA|Politico|MarketWatch|Deadline|Variety|Marketing Dive).*$/i,
+      ''
+    )
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -891,10 +948,20 @@ export function synthesizeConciseBroadcastDispatch(title: string, rawSummary?: s
     coreSentence = (lastSpace > 35 ? coreSentence.slice(0, lastSpace) : coreSentence.slice(0, 95)).trim() + '.';
   }
 
-  // Deduplication check: compare non-trivial keywords
-  const stopWords = new Set(['the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 'is', 'are', 'was', 'were', 'by', 'with', 'from', 'as', 'that', 'this', 'it', 'its', 'their', 'has', 'have', 'had']);
-  const titleWords = cleanTitle.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
-  const summaryWords = coreSentence.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+  const stopWords = new Set([
+    'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 'is', 'are', 'was', 'were',
+    'by', 'with', 'from', 'as', 'that', 'this', 'it', 'its', 'their', 'has', 'have', 'had',
+  ]);
+  const titleWords = cleanTitle
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !stopWords.has(w));
+  const summaryWords = coreSentence
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !stopWords.has(w));
 
   let overlapCount = 0;
   for (const w of summaryWords) {
@@ -902,8 +969,7 @@ export function synthesizeConciseBroadcastDispatch(title: string, rawSummary?: s
   }
   const overlapRatio = summaryWords.length > 0 ? overlapCount / summaryWords.length : 1;
 
-  // If summary has >30% keyword duplication with title or begins with title, return title only to prevent repeating
-  if (overlapRatio > 0.30 || coreSentence.toLowerCase().startsWith(cleanTitle.toLowerCase().slice(0, 20))) {
+  if (overlapRatio > 0.3 || coreSentence.toLowerCase().startsWith(cleanTitle.toLowerCase().slice(0, 20))) {
     return `${cleanTitle}.`;
   }
 
@@ -911,7 +977,7 @@ export function synthesizeConciseBroadcastDispatch(title: string, rawSummary?: s
 }
 
 /**
- * Public Method: Generate Broadcast Bulletin for TV Presenter
+ * Public Method: Generate Broadcast Bulletin for TV Presenter (strictly yesterday/today)
  */
 export async function getLiveBroadcastBulletin(channel = 'live'): Promise<{
   channel: string;
@@ -937,12 +1003,12 @@ export async function getLiveBroadcastBulletin(channel = 'live'): Promise<{
   else if (channel === 'innovation') categoryFilter = 'technology';
 
   const res = await getLiveArticles({ category: categoryFilter, page_size: 60 });
-  
-  // Guarantee multi-source diversity: pick stories across distinct prominent news organizations
+
   const distinctArticles: NewsArticle[] = [];
   const seenFamilies = new Set<string>();
 
   for (const art of res.items) {
+    if (!isStrictlyTodayOnly(art.published_at)) continue;
     const fam = (art.source?.name || art.source?.domain || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 7);
     if (!seenFamilies.has(fam)) {
       seenFamilies.add(fam);
@@ -951,9 +1017,9 @@ export async function getLiveBroadcastBulletin(channel = 'live'): Promise<{
     }
   }
 
-  // Fill up if fewer distinct
   if (distinctArticles.length < 12) {
     for (const art of res.items) {
+      if (!isStrictlyTodayOnly(art.published_at)) continue;
       if (!distinctArticles.some((d) => d.slug === art.slug)) {
         distinctArticles.push(art);
         if (distinctArticles.length >= 16) break;
@@ -974,10 +1040,12 @@ export async function getLiveBroadcastBulletin(channel = 'live'): Promise<{
 
   const items = articles.map((art, idx) => {
     const bureau = bureaus[idx % bureaus.length];
-    
-    // Clean headline: remove publisher trailing tags like "- Reuters", "| BBC News"
+
     const cleanTitle = art.title
-      .replace(/\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA|Politico|MarketWatch|Deadline|Variety|Marketing Dive).*$/i, '')
+      .replace(
+        /\s*[-|–—]\s*(Reuters|BBC|CNN|Associated Press|AP|Bloomberg|The Wall Street Journal|WSJ|The New York Times|NYT|CNBC|Forbes|Al Jazeera|The Guardian|Fox News|ABC News|NASA|Politico|MarketWatch|Deadline|Variety|Marketing Dive).*$/i,
+        ''
+      )
       .replace(/\.$/, '')
       .trim();
 

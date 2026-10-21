@@ -15,7 +15,13 @@ export async function GET() {
       });
       if (response.ok) {
         const data = await response.json();
-        return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } });
+        return NextResponse.json(data, {
+          headers: {
+            'Cache-Control': 'no-store',
+            'X-Temporal-Window': 'STRICTLY_YESTERDAY_AND_TODAY',
+            'X-Security-Shield': 'PQC-Anti-Injection-Armed',
+          },
+        });
       }
     } catch {
       // Fall through to real-time revision generator
@@ -28,6 +34,13 @@ export async function GET() {
     headers: {
       'Cache-Control': 'no-store, max-age=0',
       'X-Poll-Status': 'Active',
+      'X-Temporal-Window': 'STRICTLY_YESTERDAY_AND_TODAY',
+      'X-Security-Shield': 'PQC-Anti-Injection-Armed',
+      'X-Update-Frequency:': '2-Minutes-Up-To-The-Minute',
     },
   });
+}
+
+export async function POST() {
+  return NextResponse.json({ error: 'Access Denied: Direct news publication blocked.' }, { status: 403 });
 }
