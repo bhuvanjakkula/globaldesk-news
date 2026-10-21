@@ -36,7 +36,7 @@ export async function GET() {
       'X-Poll-Status': 'Active',
       'X-Temporal-Window': 'STRICTLY_YESTERDAY_AND_TODAY',
       'X-Security-Shield': 'PQC-Anti-Injection-Armed',
-      'X-Update-Frequency:': '2-Minutes-Up-To-The-Minute',
+      'X-Update-Frequency': '2-Minutes-Up-To-The-Minute',
     },
   });
 }
