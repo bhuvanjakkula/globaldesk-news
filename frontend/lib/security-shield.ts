@@ -44,6 +44,17 @@ export const AUTHORIZED_PROMINENT_DOMAINS = new Set([
   'deadline.com',
   'billboard.com',
   'rollingstone.com',
+  'espn.com',
+  'skysports.com',
+  'theathletic.com',
+  'cbssports.com',
+  'si.com',
+  'nba.com',
+  'fifa.com',
+  'formula1.com',
+  'autosport.com',
+  'atptour.com',
+  'wtatennis.com',
 ]);
 
 export interface SecurityAuditMetrics {

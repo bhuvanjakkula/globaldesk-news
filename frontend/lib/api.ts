@@ -34,6 +34,12 @@ export const TOPICS: Category[] = [
   { slug: 'economy', name: 'Economy', description: 'Inflation, jobs, GDP and monetary policy.' },
   { slug: 'politics', name: 'Politics', description: 'Governments, diplomacy, elections and policy.' },
   { slug: 'technology', name: 'Technology', description: 'AI, cybersecurity, software and emerging technology.' },
+  { slug: 'sports', name: 'Sports', description: 'Global championship athletics, tournament drama, live scores, and game coverage.' },
+  { slug: 'football', name: 'Football / Soccer', description: 'Premier League, UEFA Champions League, FIFA, La Liga, and transfer wires.' },
+  { slug: 'basketball', name: 'Basketball', description: 'NBA championship race, playoffs, franchise highlights, and global hoops.' },
+  { slug: 'motorsport', name: 'Motorsport / F1', description: 'Formula 1 Grand Prix paddock reports, qualifying, and world championship standings.' },
+  { slug: 'tennis', name: 'Tennis', description: 'Grand Slam matches, ATP, WTA world tours, and court updates.' },
+  { slug: 'cricket', name: 'Cricket', description: 'ICC tournaments, Test matches, IPL, and international series coverage.' },
   { slug: 'marketing', name: 'Marketing', description: 'Advertising, branding and consumer behavior.' },
   { slug: 'entertainment', name: 'Entertainment', description: 'Your window into cinema, creativity, sound and culture.' },
   { slug: 'movies', name: 'Movies', description: 'Cinema, moviegoing and screen storytelling.' },
@@ -44,7 +50,8 @@ export const TOPICS: Category[] = [
   { slug: 'rock', name: 'Rock', description: 'Electric guitars, bands and live music.' },
   { slug: 'arts', name: 'Arts', description: 'Visual arts, museums and exhibitions.' },
 ];
-export const MAIN_TOPICS = TOPICS.filter(t => ['world','business','economy','politics','technology','marketing','entertainment'].includes(t.slug));
+export const MAIN_TOPICS = TOPICS.filter(t => ['world','business','economy','politics','technology','sports','marketing','entertainment'].includes(t.slug));
+export const SPORTS_TOPICS = TOPICS.filter(t => ['sports','football','basketball','motorsport','tennis','cricket'].includes(t.slug));
 export const ENTERTAINMENT_TOPICS = TOPICS.filter(t => ['movies','films','hollywood','music','pop','rock','arts'].includes(t.slug));
 import seedBundle from './seed_news.json';
 import { getLiveArticles, getLiveArticleBySlug } from './live-news-engine';

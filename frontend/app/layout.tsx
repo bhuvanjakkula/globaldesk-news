@@ -8,6 +8,7 @@ import './cover.css';
 import './masthead.css';
 import './innovation.css';
 import './markets.css';
+import './sports.css';
 
 export const dynamic = 'force-dynamic';
 

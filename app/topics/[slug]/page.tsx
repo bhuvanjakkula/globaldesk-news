@@ -7,6 +7,9 @@ import { isEntertainment } from '@/lib/visuals';
 import EntertainmentCover from '@/components/EntertainmentCover';
 import EntertainmentShowcase from '@/components/EntertainmentShowcase';
 
+import SportsScoreboard from '@/components/SportsScoreboard';
+import { SPORTS_TOPICS } from '@/lib/api';
+
 export const dynamic = 'force-dynamic';
 export function generateStaticParams() { return TOPICS.map(t => ({ slug: t.slug })); }
 type Props = { params: Promise<{slug:string}>; searchParams: Promise<{page?:string}> };
@@ -23,6 +26,37 @@ export default async function TopicPage({params, searchParams}: Props) {
   let data;
   try { data = await getArticles({category:slug, page}); }
   catch { return <div className="container page-pad"><div className="empty-state"><h1>Service unavailable</h1><p>Please start the API and database.</p></div></div>; }
+
+  const isSportsTopic = ['sports', 'football', 'basketball', 'motorsport', 'tennis', 'cricket'].includes(slug);
+  if (isSportsTopic) {
+    return (
+      <div className="container page-pad sports-topic-page">
+        <div className="breadcrumb"><Link href="/">Home</Link> / <Link href="/sports">Sports Center</Link> / {topic.name}</div>
+        <section className="sports-hero-band" style={{ borderRadius: '16px', margin: '16px 0 32px' }}>
+          <div className="sports-hero-inner">
+            <div className="sports-hero-badge">
+              <span className="sports-pulse-dot" />
+              <span>LIVE SPORTS WIRE · 24/7 CHAMPIONSHIP TELEMETRY</span>
+            </div>
+            <h1>{topic.name} <em>Arena.</em></h1>
+            <p>{topic.description} Strictly today's verified game coverage from ESPN, BBC Sport, Sky Sports, and Reuters.</p>
+          </div>
+        </section>
+        <SportsScoreboard />
+        <nav className="sports-genre-nav" aria-label="Browse sports categories">
+          <Link href="/sports" className={slug === 'sports' ? 'is-active' : ''}>All Sports</Link>
+          {SPORTS_TOPICS.map((t) => (
+            <Link key={t.slug} href={`/topics/${t.slug}`} className={slug === t.slug ? 'is-active' : ''}>
+              {t.name}
+            </Link>
+          ))}
+        </nav>
+        <div className="section-head"><div><span className="section-kicker">CHAMPIONSHIP REPORTS</span><h2>{data.total} stories in {topic.name}</h2></div><span className="section-sub">Auto-updates every 2 minutes · Strictly today news</span></div>
+        <ArticleFeed data={data} path={`/topics/${slug}`} />
+      </div>
+    );
+  }
+
   if (isEntertainment(slug)) {
     return <div className="container page-pad ent-section-page">
       <div className="breadcrumb"><Link href="/">Home</Link> / <Link href="/topics/entertainment">Entertainment</Link> / {topic.name}</div>

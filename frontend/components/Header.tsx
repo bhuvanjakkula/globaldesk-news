@@ -73,6 +73,9 @@ export default function Header() {
           <Link href="/tv" className="nav-tv-pill">
             <span className="nav-tv-dot" /> Live TV
           </Link>
+          <Link href="/sports" className="nav-sports-pill">
+            <span className="nav-sports-dot" /> Sports Center
+          </Link>
           {MAIN_TOPICS.map((t) => (
             <Link key={t.slug} href={`/topics/${t.slug}`}>
               {t.name}

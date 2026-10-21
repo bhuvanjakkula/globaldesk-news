@@ -4,6 +4,7 @@ import LiveIntelligenceHUD from '@/components/LiveIntelligenceHUD';
 import EntertainmentShowcase from '@/components/EntertainmentShowcase';
 import InnovationStrip from '@/components/InnovationStrip';
 import MarketsStrip from '@/components/MarketsStrip';
+import SportsStrip from '@/components/SportsStrip';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,9 +60,10 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Real-time Markets & Innovation Strips */}
+        {/* Real-time Markets, Innovation, & Sports Strips */}
         <MarketsStrip />
         <InnovationStrip />
+        <SportsStrip />
 
         {/* High-Tech Superpower Interactive Intelligence Engine */}
         <LiveIntelligenceHUD initialArticles={data.items} totalCount={data.total} />

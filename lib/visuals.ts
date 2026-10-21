@@ -19,6 +19,15 @@ export type EntertainmentSlug = (typeof ENTERTAINMENT_SLUGS)[number];
 export const isEntertainment = (slug: string): slug is EntertainmentSlug =>
   (ENTERTAINMENT_SLUGS as readonly string[]).includes(slug);
 
+export const SPORTS_SLUGS = [
+  'sports', 'football', 'basketball', 'motorsport', 'tennis', 'cricket'
+] as const;
+
+export type SportsSlug = (typeof SPORTS_SLUGS)[number];
+
+export const isSports = (slug: string): slug is SportsSlug =>
+  (SPORTS_SLUGS as readonly string[]).includes(slug as SportsSlug);
+
 export interface ArticleVisual {
   imageUrl: string;
   topicLabel: string;
