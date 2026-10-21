@@ -74,9 +74,9 @@ export default function LiveIntelligenceHUD({ initialArticles, totalCount }: Liv
     }
   };
 
-  // Auto-refresh every 15 seconds to keep every segment up to the minute
+  // Auto-refresh every 2 minutes to keep every segment up to the minute
   useEffect(() => {
-    const interval = setInterval(fetchLatest, 15000); // 15 seconds live sync
+    const interval = setInterval(fetchLatest, 120000); // 2 minutes live sync
     return () => {
       clearInterval(interval);
     };
@@ -201,7 +201,7 @@ export default function LiveIntelligenceHUD({ initialArticles, totalCount }: Liv
           </div>
           <div className="hud-engine-status" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className={isSyncing ? 'pulse-blue' : 'pulse-green'} />
-            <span>{isSyncing ? 'SYNCING 15s PULSE...' : 'LIVE AUTO-SYNC: 15s'}</span>
+            <span>{isSyncing ? 'SYNCING 2m PULSE...' : 'LIVE AUTO-SYNC: 2m'}</span>
           </div>
           <span className="hud-metric-sub">
             LAST TICK: {lastTick} · PROMINENT OUTLETS LIVE

@@ -2,16 +2,16 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
-const PUBLIC = ['/', '/news', '/markets', '/innovation', '/intelligence', '/briefings', '/search', '/sources'];
-
+// Live updates active across ALL news and ALL sections
 export default function LiveUpdates() {
   const path = usePathname();
   const router = useRouter();
   const [paused, setPaused] = useState(false);
   const [state, setState] = useState('Connecting to live newsroom...');
-  const [interval, setIntervalSeconds] = useState(15);
+  const [interval, setIntervalSeconds] = useState(120);
 
-  const enabled = PUBLIC.includes(path) || path.startsWith('/topics/') || path.startsWith('/story/');
+  // Enabled on ALL public news sections and segments
+  const enabled = !path.startsWith('/owner');
 
   useEffect(() => {
     if (!enabled || paused) return;
@@ -20,6 +20,21 @@ export default function LiveUpdates() {
     let revision = '';
     let failures = 0;
     let controller: AbortController | null = null;
+
+    const triggerFullRefresh = () => {
+      const active = document.activeElement;
+      const editing = active?.matches('input,textarea,select,[contenteditable="true"]');
+      if (!editing) {
+        router.refresh();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('globaldesk:news-updated'));
+        }
+        setState('All news sections updated with latest 2-minute wire coverage');
+        setTimeout(() => {
+          if (!stopped) setState('Live engine active · Always updating every 2 minutes · All sections · Strictly today news');
+        }, 5000);
+      }
+    };
 
     async function poll() {
       if (stopped || busy || document.hidden) return;
@@ -38,28 +53,14 @@ export default function LiveUpdates() {
         if (typeof data.revision !== 'string') throw new Error('Invalid revision');
 
         failures = 0;
-        setIntervalSeconds(data.feed_refresh_seconds || 15);
-
-        const active = document.activeElement;
-        const editing = active?.matches('input,textarea,select,[contenteditable="true"]');
+        setIntervalSeconds(data.feed_refresh_seconds || 120);
 
         if (revision && revision !== data.revision) {
           revision = data.revision;
-          if (!editing) {
-            router.refresh();
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('globaldesk:news-updated'));
-            }
-            setState('Live reports updated to front page');
-            setTimeout(() => {
-              if (!stopped) setState('Live newsroom connected · Auto-updates every 2 minutes · Strictly Today News Only');
-            }, 4000);
-          } else {
-            setState('Updates ready · finish editing to load');
-          }
+          triggerFullRefresh();
         } else {
           revision = data.revision;
-          setState('Live newsroom connected · Auto-updates every 2 minutes · Strictly Today News Only');
+          setState('Live engine active · Always updating every 2 minutes · All sections · Strictly today news');
         }
       } catch {
         if (!stopped) {
@@ -76,14 +77,23 @@ export default function LiveUpdates() {
       }
     }
 
+    // Fast-check poll for instant revision changes (every 15s)
     let tick = 0;
     const timer = window.setInterval(() => {
       tick++;
       if (tick % Math.min(2 ** failures, 15) === 0) void poll();
     }, 1000);
 
+    // Guaranteed 2-minute clock cycle (120 seconds): unconditionally triggers fresh news across all sections
+    const hardRefreshTimer = window.setInterval(() => {
+      triggerFullRefresh();
+      void poll();
+    }, 120000);
+
     const visible = () => {
-      if (!document.hidden) void poll();
+      if (!document.hidden) {
+        void poll();
+      }
     };
     document.addEventListener('visibilitychange', visible);
     void poll();
@@ -92,6 +102,7 @@ export default function LiveUpdates() {
       stopped = true;
       controller?.abort();
       window.clearInterval(timer);
+      window.clearInterval(hardRefreshTimer);
       document.removeEventListener('visibilitychange', visible);
     };
   }, [enabled, paused, path, router]);
@@ -102,7 +113,7 @@ export default function LiveUpdates() {
     <div className="live-update-bar">
       <div className="container">
         <span>{paused ? 'Auto updates paused' : state}</span>
-        <small>Prominent international wires (Reuters, AP, Bloomberg, WSJ, NYT, BBC, CNN, CNBC, FT, Forbes, Fox News, ABC News, NASA) · Auto-updating every 2 minutes · Strictly Today Only</small>
+        <small>Prominent international wires (Reuters, AP, Bloomberg, WSJ, NYT, BBC, CNN, CNBC, FT, Forbes, Fox News, ABC News, NASA) · Auto-updating every 2 minutes · Strictly Today News Only</small>
         <button onClick={() => setPaused((v) => !v)} aria-pressed={paused}>
           {paused ? 'Resume updates' : 'Pause updates'}
         </button>

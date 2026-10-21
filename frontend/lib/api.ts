@@ -48,6 +48,7 @@ export const MAIN_TOPICS = TOPICS.filter(t => ['world','business','economy','pol
 export const ENTERTAINMENT_TOPICS = TOPICS.filter(t => ['movies','films','hollywood','music','pop','rock','arts'].includes(t.slug));
 import seedBundle from './seed_news.json';
 import { getLiveArticles, getLiveArticleBySlug } from './live-news-engine';
+import { isStrictlyTodayOnly } from './security-shield';
 
 const isVercel = process.env.VERCEL === '1' || !!process.env.NEXT_PUBLIC_VERCEL_ENV;
 const internalUrl = process.env.INTERNAL_API_URL;
@@ -94,16 +95,19 @@ export async function getArticles(options: NewsFilters = {}): Promise<ArticlePag
     params.set('page', String(options.page ?? 1));
     params.set('page_size', String(options.page_size ?? 24));
     const res = await apiFetch<ArticlePage>(`/api/v1/news?${params.toString()}`);
+    const validItems = res.items.filter(a => isStrictlyTodayOnly(a.published_at)).map(sanitizeArticle);
     return {
       ...res,
-      items: res.items.map(sanitizeArticle),
+      items: validItems,
+      total: validItems.length,
     };
   } catch {
     // High-engineering live syndication fallback: delivers real-time news from prominent organizations
     const live = await getLiveArticles(options);
+    const validItems = live.items.filter(a => isStrictlyTodayOnly(a.published_at)).map(sanitizeArticle);
     return {
-      items: live.items.map(sanitizeArticle),
-      total: live.total,
+      items: validItems,
+      total: validItems.length,
       page: live.page,
       page_size: live.page_size,
     };
@@ -115,9 +119,11 @@ export async function getArticle(slug: string): Promise<NewsArticle | null> {
     if (response.status === 404) return null;
     if (!response.ok) throw new Error(`API returned ${response.status}`);
     const a = (await response.json()) as NewsArticle;
+    if (!isStrictlyTodayOnly(a.published_at)) return null;
     return sanitizeArticle(a);
   } catch {
     const item = await getLiveArticleBySlug(slug);
+    if (item && !isStrictlyTodayOnly(item.published_at)) return null;
     return item ? sanitizeArticle(item) : null;
   }
 }
@@ -147,10 +153,12 @@ export async function getDailyBriefing(day?: string): Promise<DailyBriefing> {
     return await apiFetch(`/api/v1/briefings/daily${day ? `?day=${encodeURIComponent(day)}` : ''}`);
   } catch {
     const raw = await getLiveArticles({ page_size: 100 });
-    const items = raw.items.map(sanitizeArticle);
+    const items = raw.items.filter(a => isStrictlyTodayOnly(a.published_at)).map(sanitizeArticle);
     const sections = await Promise.all(
       MAIN_TOPICS.map(async (cat) => {
-        const catArticles = (await getLiveArticles({ category: cat.slug, page_size: 12 })).items.map(sanitizeArticle);
+        const catArticles = (await getLiveArticles({ category: cat.slug, page_size: 12 })).items
+          .filter(a => isStrictlyTodayOnly(a.published_at))
+          .map(sanitizeArticle);
         return {
           category: cat,
           total: catArticles.length,

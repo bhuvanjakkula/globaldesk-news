@@ -66,7 +66,7 @@ export default function FlashNewsBar() {
       }
     }
     void loadHeadlines();
-    const interval = setInterval(loadHeadlines, 30000); // sync every 30s
+    const interval = setInterval(loadHeadlines, 120000); // sync every 2 minutes
     return () => clearInterval(interval);
   }, []);
 
